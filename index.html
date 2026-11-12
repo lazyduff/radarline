@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Radarline">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="theme-color" content="#0B1220">
+<title>Radarline Bay</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root{
+    --ink:#0B1220; --panel:rgba(10,17,30,.88); --line:rgba(140,180,215,.22);
+    --text:#E9F1F8; --dim:#8FA6BC; --ice:#8AD8FF; --amber:#FFB454; --chip:rgba(255,255,255,.06);
+    --alert-bg:rgba(58,38,8,.92); --alert-tx:#FFD9A0; --cloud:#A9BCCF; --sun:#FFC24D;
+  }
+  body[data-theme=light]{
+    --ink:#E8EEF3; --panel:rgba(250,252,254,.92); --line:rgba(40,70,100,.2);
+    --text:#122033; --dim:#56697D; --ice:#0B6FA8; --amber:#B25E00; --chip:rgba(10,40,70,.06);
+    --alert-bg:rgba(255,236,204,.96); --alert-tx:#5A3300; --cloud:#8496A8; --sun:#F29A00;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{font-family:"Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;background:var(--ink);color:var(--text);overflow:hidden;font-size:14px}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  #map{position:fixed;inset:0;background:var(--ink)}
+  .leaflet-container{background:var(--ink)}
+  .card{background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+
+  /* top panel */
+  #top{position:fixed;z-index:1000;top:max(8px,env(safe-area-inset-top));left:8px;right:8px;max-width:560px;margin:0 auto;padding:10px 12px 8px}
+  .chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;padding:6px 11px;border-radius:999px;background:var(--chip);border:1px solid var(--line);font-size:13px;color:var(--dim);white-space:nowrap}
+  .chip.on{color:var(--ink);background:var(--ice);border-color:var(--ice);font-weight:600}
+  .now{display:flex;align-items:center;gap:10px;margin-top:8px}
+  .temp{font-size:64px;font-weight:300;line-height:1;letter-spacing:-.03em}
+  .unit{font-size:20px;color:var(--dim);align-self:flex-start;margin-top:8px;padding:2px 6px;margin-left:-6px}
+  .icon{font-size:40px;line-height:1}
+  .cond{flex:1;min-width:0;font-size:13px;color:var(--dim);line-height:1.35}
+  .cond b{display:block;color:var(--text);font-weight:500;font-size:15px}
+  .src{margin-top:4px;font-size:10.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .days{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+  .days::-webkit-scrollbar{display:none}
+  .day{flex:none;width:50px;text-align:center;font-size:11px;color:var(--dim);padding:3px 0;border-radius:8px}
+  .day.sel{background:var(--chip)}
+  .day i{display:block;font-style:normal;font-size:18px;margin:2px 0}
+  .day b{display:block;color:var(--text);font-weight:500;font-size:13px}
+  .day u{text-decoration:none;color:var(--ice);font-size:10px;display:block;height:12px}
+  .daynote{font-size:11.5px;color:var(--dim);margin-top:6px;line-height:1.4}
+  .alert{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;padding:8px 10px;border-radius:10px;background:var(--alert-bg);color:var(--alert-tx);font-size:12.5px;line-height:1.35}
+  .alert .tx{flex:1;min-width:0}
+  .alert b{display:block;color:var(--amber);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase}
+  .alert .full{white-space:pre-wrap;max-height:38vh;overflow:auto;margin-top:6px;font-size:12px}
+  .alert .x{font-size:18px;line-height:1;padding:2px 6px}
+
+  /* manage panel */
+  #manage{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+  #manage.open{display:block}
+  #manage input{width:100%;background:var(--chip);border:1px solid var(--line);border-radius:8px;color:var(--text);font:inherit;font-size:16px;padding:9px 10px;outline:none}
+  #manage input:focus{border-color:var(--ice)}
+  .row{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;padding:8px 6px;border-radius:6px;font-size:13px}
+  .row span{color:var(--dim);font-size:16px;padding:0 6px}
+  .tools{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .tools button{padding:7px 11px;border-radius:8px;border:1px solid var(--line);background:var(--chip);font-size:12.5px}
+  .hd{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:10px 0 4px}
+
+  /* bottom sheet */
+  #sheet{position:fixed;z-index:1000;left:8px;right:8px;max-width:560px;margin:0 auto;bottom:max(8px,env(safe-area-inset-bottom));padding:10px 12px;display:flex;flex-direction:column;max-height:calc(100vh - 16px)}
+  .bar-top{display:flex;align-items:center;gap:12px}
+  .play{width:38px;height:38px;flex:none;border-radius:50%;border:1px solid var(--line);background:var(--chip);color:var(--ice);display:flex;align-items:center;justify-content:center}
+  .play svg{width:15px;height:15px;fill:currentColor}
+  .track{flex:1;position:relative;height:28px;touch-action:none}
+  .track-line{position:absolute;left:0;right:0;top:13px;height:2px;background:var(--line)}
+  .track-past{position:absolute;left:0;top:13px;height:2px;background:var(--ice);width:0}
+  .knob{position:absolute;top:7px;width:14px;height:14px;border-radius:50%;background:var(--ice);margin-left:-7px}
+  .ft{flex:none;width:68px;text-align:right;font-size:12px;font-weight:500}
+  .more{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:11.5px;color:var(--dim)}
+  .more button{padding:6px 4px}
+  .more .open{color:var(--ice);font-weight:600}
+  #body{display:none;overflow-y:auto;margin-top:6px;border-top:1px solid var(--line);-webkit-overflow-scrolling:touch}
+  #sheet.exp{top:max(8px,env(safe-area-inset-top))}
+  #sheet.exp #body{display:block;flex:1}
+  .hours{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
+  .hours::-webkit-scrollbar{display:none}
+  .hr{flex:none;width:46px;text-align:center;font-size:11px;color:var(--dim)}
+  .hr.d0{border-left:1px solid var(--line)}
+  .hr i{display:block;font-style:normal;font-size:17px;margin:2px 0}
+  .hr b{display:block;color:var(--text);font-weight:500;font-size:13px}
+  .hr u{text-decoration:none;color:var(--ice);font-size:10px;display:block;height:12px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+  .kv{font-size:11px;color:var(--dim)}
+  .kv b{display:block;color:var(--text);font-weight:500;font-size:14px;margin-top:1px}
+  .tide svg{width:100%;height:74px;display:block}
+  .tl{display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0}
+  .tl span{color:var(--dim)}
+  p.txt{font-size:12.5px;line-height:1.45;color:var(--text);margin-bottom:6px}
+  p.txt b{color:var(--dim);font-weight:500}
+  .links{margin:10px 0 4px;font-size:12px}
+  .links a{color:var(--ice);margin-right:12px}
+  .credit{font-size:9.5px;color:var(--dim);margin:10px 0 2px;line-height:1.5}
+  .credit a{color:var(--dim)}
+  .leaflet-control-zoom{display:none}
+  #satBtn{position:absolute;right:0;top:-44px;padding:8px 12px;border-radius:999px;font-size:12.5px;color:var(--dim)}
+  #satBtn.on{color:var(--ink);background:var(--ice);border-color:var(--ice);font-weight:600}
+  #sheet.exp #satBtn{display:none}
+  .wi{width:1em;height:1em;display:inline-block;vertical-align:middle}
+  .more label{display:flex;align-items:center;gap:5px;font-size:10.5px}
+  .more input[type=range]{width:64px;accent-color:var(--ice)}
+</style>
+</head>
+<body>
+<div id="map" aria-label="Radar map"></div>
+
+<div id="top" class="card">
+  <div id="alertBox"></div>
+  <div class="chips" id="chips"></div>
+  <div id="manage">
+    <input id="q" type="text" placeholder="Add a place: city, neighborhood, or ZIP" autocomplete="off">
+    <div id="results"></div>
+    <div id="savedList"></div>
+    <div class="tools">
+      <button id="hereBtn">Use my location</button>
+      <button id="themeBtn">Light / dark</button>
+    </div>
+    <div class="hd">Synoptic token (optional, adds neighborhood stations)</div>
+    <input id="synTok" type="text" placeholder="Paste token, stays on this device only" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="hd">AirNow key (optional, local air quality monitors)</div>
+    <input id="anKey" type="text" placeholder="Paste key, stays on this device only" autocomplete="off" autocapitalize="off" spellcheck="false">
+  </div>
+  <div class="now">
+    <div class="temp" id="temp">--</div>
+    <button class="unit" id="unit" aria-label="Switch units">°F</button>
+    <div class="icon" id="icon"></div>
+    <div class="cond" id="cond"></div>
+  </div>
+  <div class="src" id="src"></div>
+  <div class="days" id="days"></div>
+  <div class="daynote" id="daynote"></div>
+</div>
+
+<div id="sheet" class="card">
+  <button id="satBtn" class="card">Clouds</button>
+  <div class="bar-top">
+    <button class="play" id="playBtn" aria-label="Play or pause radar"><svg id="playIcon" viewBox="0 0 16 16"><path d="M4 2l10 6-10 6z"/></svg></button>
+    <div class="track" id="track"><div class="track-line"></div><div class="track-past" id="trackPast"></div><div class="knob" id="knob"></div></div>
+    <div class="ft" id="frameTime">--</div>
+  </div>
+  <div class="more">
+    <button id="stamp">Loading</button>
+    <label>Radar<input type="range" id="op" min="20" max="100" step="5" aria-label="Radar strength"></label>
+    <button class="open" id="moreBtn">Hourly, tides, details ▴</button>
+  </div>
+  <div id="body">
+    <div class="hd">Next 48 hours</div><div class="hours" id="hours"></div>
+    <div id="nearWrap"></div>
+    <div id="straitWrap"></div>
+    <div id="seaWrap"></div>
+    <div id="tideWrap"></div>
+    <div id="fireWrap"></div>
+    <div class="hd">Details</div><div class="grid" id="details"></div>
+    <div id="nwsWrap"></div>
+    <div class="links" id="links"></div>
+    <div class="credit">Radar and GOES-West clouds: NOAA via <a href="https://mesonet.agron.iastate.edu">Iowa Environmental Mesonet</a> · Forecast and alerts: NOAA/NWS · Point model: <a href="https://open-meteo.com">Open-Meteo</a> (HRRR) · Wildfires: NIFC WFIGS · Tides and pier sensors: NOAA CO-OPS · Neighborhood stations: Synoptic Data · Air quality: EPA AirNow, or CAMS via Open-Meteo · Map: Esri, HERE, Garmin, OpenStreetMap contributors</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  // ---------- config ----------
+  const DEFAULTS = [
+    {id:'benicia',  name:'Benicia',       lat:38.0494, lon:-122.1586, fixed:true},
+    {id:'glencove', name:'Glen Cove',     lat:38.0672, lon:-122.2127, fixed:true},
+    {id:'cvalley',  name:'Carmel Valley', lat:36.4797, lon:-121.7325, fixed:true}
+  ];
+  // NOAA CO-OPS tide prediction stations. Nearest one that answers is used.
+  const TIDE_STATIONS = [
+    {id:'9415111', name:'Benicia',              lat:38.0433, lon:-122.1300},
+    {id:'9415102', name:'Martinez-Amorco Pier', lat:38.0346, lon:-122.1252},
+    {id:'9415143', name:'Crockett',             lat:38.0583, lon:-122.2233},
+    {id:'9415218', name:'Mare Island',          lat:38.0700, lon:-122.2500},
+    {id:'9415144', name:'Port Chicago',         lat:38.0560, lon:-122.0395},
+    {id:'9414863', name:'Richmond',             lat:37.9283, lon:-122.4000},
+    {id:'9414290', name:'San Francisco',        lat:37.8063, lon:-122.4659},
+    {id:'9413450', name:'Monterey',             lat:36.6050, lon:-121.8880}
+  ];
+  // CO-OPS stations with live wind / air / water sensors
+  const MET_STATIONS = [
+    {id:'9415102', name:'Martinez-Amorco Pier', lat:38.0346, lon:-122.1252},
+    {id:'9415144', name:'Port Chicago',         lat:38.0560, lon:-122.0395},
+    {id:'9414863', name:'Richmond',             lat:37.9283, lon:-122.4000},
+    {id:'9414290', name:'San Francisco',        lat:37.8063, lon:-122.4659},
+    {id:'9413450', name:'Monterey',             lat:36.6050, lon:-121.8880}
+  ];
+  const TIDE_MAX_KM = 40, MET_MAX_KM = 12;
+
+  // Keys are entered in the app (+ Add) and stay in this browser only.
+  const BAKED = {synTok:'', anKey:''};
+
+  // ---------- storage ----------
+  const store = {
+    get(k, d){ try{ const v = localStorage.getItem('wx.' + k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
+    set(k, v){ try{ localStorage.setItem('wx.' + k, JSON.stringify(v)); }catch(e){} }
+  };
+  let saved = store.get('saved', []);
+  let unit = store.get('unit', 'F');
+  let theme = store.get('theme', 'dark');
+  let dismissed = store.get('dismissed', []);
+  let pin = null;       // temporary place picked by tapping the map
+  const locs = () => DEFAULTS.concat(saved, pin ? [pin] : []);
+  let active = locs().find(l => l.id === store.get('active', 'benicia')) || DEFAULTS[0];
+  let D = {};            // data for active location
+  let token = 0;         // drops stale responses after a location switch
+  let selDay = -1;
+
+  // ---------- helpers ----------
+  const km = (a, b, c, d) => { const R = 6371, r = Math.PI / 180, x = (d - b) * r * Math.cos((a + c) * r / 2), y = (c - a) * r; return R * Math.sqrt(x * x + y * y); };
+  const T = f => f == null || isNaN(f) ? '--' : Math.round(unit === 'F' ? f : (f - 32) * 5 / 9);
+  const c2f = c => c * 9 / 5 + 32;
+  const compass = d => d == null ? '' : ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(d / 22.5) % 16];
+  const clock = d => d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+  const hourLbl = d => d.toLocaleTimeString([], {hour:'numeric'}).replace(' ', '').toLowerCase();
+  const ago = d => { const m = Math.round((Date.now() - d) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' hr ago'; };
+  const ymd = d => d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+  const ICON = (() => {
+    const sun = (x, y, r) => '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="var(--sun)"/>';
+    const rays = '<g stroke="var(--sun)" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g>';
+    const moon = (t) => '<path transform="' + t + '" d="M15.5 3.5a8.5 8.5 0 1 0 5 15.4A9.5 9.5 0 0 1 15.5 3.5z" fill="var(--sun)"/>';
+    const cloud = dy => '<path transform="translate(0 ' + dy + ')" d="M7 19a4.5 4.5 0 0 1-.6-8.96A5.8 5.8 0 0 1 17.6 11 4 4 0 0 1 17.5 19z" fill="var(--cloud)"/>';
+    const drops = n => '<g stroke="var(--ice)" stroke-width="1.8" stroke-linecap="round">' + [8, 12, 16].slice(0, n).map(x => '<path d="M' + x + ' 17.5l-1 3.5"/>').join('') + '</g>';
+    const flakes = '<g fill="var(--ice)"><circle cx="8" cy="19" r="1.3"/><circle cx="12" cy="21" r="1.3"/><circle cx="16" cy="19" r="1.3"/></g>';
+    const w = b => '<svg class="wi" viewBox="0 0 24 24" aria-hidden="true">' + b + '</svg>';
+    return {
+      clearD: w(sun(12, 12, 5) + rays), clearN: w(moon('')),
+      partD: w(sun(16, 8, 4.2) + cloud(1)), partN: w(moon('translate(8 -1) scale(.55)') + cloud(1)),
+      cloud: w(cloud(-1)),
+      fog: w(cloud(-5) + '<g stroke="var(--cloud)" stroke-width="1.8" stroke-linecap="round"><path d="M5 17h14M7 20.5h10"/></g>'),
+      drizzle: w(cloud(-5) + drops(2)), rain: w(cloud(-5) + drops(3)),
+      showD: w(sun(16, 5.5, 3.6) + cloud(-4) + drops(2)), snow: w(cloud(-5) + flakes),
+      storm: w(cloud(-5) + '<path d="M13 14l-4 5h3l-1.5 4.5 5-6h-3z" fill="var(--sun)"/>')
+    };
+  })();
+  function wmo(code, day){
+    const n = day === 0;
+    const m = c => c === 0 ? ['Clear', n ? ICON.clearN : ICON.clearD] : c === 1 ? ['Mostly clear', n ? ICON.clearN : ICON.clearD] :
+      c === 2 ? ['Partly cloudy', n ? ICON.partN : ICON.partD] : c === 3 ? ['Overcast', ICON.cloud] : c <= 48 ? ['Fog', ICON.fog] :
+      c <= 57 ? ['Drizzle', ICON.drizzle] : c <= 67 ? ['Rain', ICON.rain] : c <= 77 ? ['Snow', ICON.snow] :
+      c <= 82 ? ['Showers', n ? ICON.rain : ICON.showD] : c <= 86 ? ['Snow showers', ICON.snow] : ['Thunderstorm', ICON.storm];
+    const r = m(code); return {text:r[0], icon:r[1]};
+  }
+  async function jget(url, headers, ms){
+    const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms || 15000);
+    try{
+      const r = await fetch(url, {headers: headers || {}, signal: ac.signal});
+      if (!r.ok) throw new Error(r.status + ' ' + url);
+      return await r.json();
+    } finally { clearTimeout(t); }
+  }
+  const NWS = {Accept:'application/geo+json'};
+  const COOPS = 'https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?format=json&units=english&time_zone=lst_ldt&application=radarline_personal';
+  const coopsTime = s => new Date(s.replace(' ', 'T'));
+
+  // ---------- map + radar ----------
+  const map = L.map('map', {zoomControl:false, attributionControl:false}).setView([active.lat, active.lon], 9);
+  let base = null, labels = null, marker = null;
+  map.createPane('sat').style.zIndex = 210;
+  map.getPane('sat').style.pointerEvents = 'none';
+  map.createPane('radar').style.zIndex = 300;
+  map.getPane('radar').style.pointerEvents = 'none';
+  map.createPane('fire').style.zIndex = 460;
+  map.createPane('labels').style.zIndex = 450;
+  map.getPane('labels').style.pointerEvents = 'none';
+  function setBase(){
+    if (base) map.removeLayer(base);
+    if (labels) map.removeLayer(labels);
+    const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_' + (theme === 'light' ? 'Light' : 'Dark') + '_Gray_';
+    base = L.tileLayer(esri + 'Base/MapServer/tile/{z}/{y}/{x}', {maxZoom:13}).addTo(map);
+    base.bringToBack();
+    labels = L.tileLayer(esri + 'Reference/MapServer/tile/{z}/{y}/{x}', {maxZoom:13, pane:'labels'}).addTo(map);
+  }
+  function recenter(){
+    const z = map.getZoom();
+    const mid = ($('top').getBoundingClientRect().bottom + $('sheet').getBoundingClientRect().top) / 2;
+    const dy = mid - map.getSize().y / 2;
+    const p = map.project([active.lat, active.lon], z).subtract([0, dy]);
+    map.setView(map.unproject(p, z), z, {animate:false});
+  }
+
+  let frames = [], layers = [], idx = 0, playing = false, timer = null, radarOp = store.get('op', 70) / 100;
+  function buildRadar(){
+    const stampUTC = t => { const d = new Date(t), p = n => String(n).padStart(2, '0'); return d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate()) + p(d.getUTCHours()) + p(d.getUTCMinutes()); };
+    const five = 5 * 60000, end = Math.floor((Date.now() - 2 * five) / five) * five;
+    frames = [];
+    for (let i = 10; i >= 0; i--){ const t = end - i * 2 * five; frames.push({t, url:'https://mesonet.agron.iastate.edu/c/tile.py/1.0.0/ridge::USCOMP-N0Q-' + stampUTC(t) + '/{z}/{x}/{y}.png'}); }
+    frames.push({t:null, url:'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::USCOMP-N0Q-0/{z}/{x}/{y}.png?_=' + Math.floor(Date.now() / 300000)});
+    layers.forEach(l => map.removeLayer(l));
+    layers = frames.map(f => L.tileLayer(f.url, {opacity:0, maxZoom:13, maxNativeZoom:10, pane:'radar'}).addTo(map));
+    showFrame(frames.length - 1);
+  }
+  function showFrame(i){
+    idx = i;
+    layers.forEach((l, k) => l.setOpacity(k === i ? radarOp : 0));
+    const pct = i / (frames.length - 1) * 100;
+    $('knob').style.left = pct + '%'; $('trackPast').style.width = pct + '%';
+    $('frameTime').textContent = frames[i].t ? clock(new Date(frames[i].t)) : 'Latest';
+  }
+  function setPlaying(on){
+    playing = on; clearInterval(timer);
+    if (on) timer = setInterval(() => showFrame((idx + 1) % frames.length), idx === frames.length - 1 ? 700 : 600);
+    $('playIcon').innerHTML = on ? '<path d="M3 2h4v12H3zM9 2h4v12H9z"/>' : '<path d="M4 2l10 6-10 6z"/>';
+  }
+  // GOES-West infrared cloud layer (works day and night)
+  let sat = null, satOn = store.get('sat', false);
+  function setSat(){
+    if (sat){ map.removeLayer(sat); sat = null; }
+    $('satBtn').classList.toggle('on', satOn);
+    map.getPane('sat').style.mixBlendMode = theme === 'light' ? 'normal' : 'screen';
+    if (satOn) sat = L.tileLayer('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/goes_west_conus_ch13/{z}/{x}/{y}.png?_=' + Math.floor(Date.now() / 300000),
+      {pane:'sat', opacity: theme === 'light' ? 0.5 : 0.8, maxZoom:13, maxNativeZoom:8}).addTo(map);
+  }
+  $('satBtn').addEventListener('click', () => { satOn = !satOn; store.set('sat', satOn); setSat(); });
+  $('playBtn').addEventListener('click', () => setPlaying(!playing));
+  $('op').value = Math.round(radarOp * 100);
+  $('op').addEventListener('input', e => { radarOp = e.target.value / 100; store.set('op', +e.target.value); showFrame(idx); });
+  let dragging = false;
+  function seek(e){
+    const r = $('track').getBoundingClientRect(), p = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    setPlaying(false); showFrame(Math.round(p * (frames.length - 1)));
+  }
+  $('track').addEventListener('pointerdown', e => { dragging = true; seek(e); });
+  window.addEventListener('pointermove', e => dragging && seek(e));
+  window.addEventListener('pointerup', () => dragging = false);
+
+  // ---------- data loaders ----------
+  async function loadModel(l){
+    const u = 'https://api.open-meteo.com/v1/forecast?latitude=' + l.lat + '&longitude=' + l.lon +
+      '&current=temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover,visibility,pressure_msl,precipitation' +
+      '&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cloud_cover_low,visibility,is_day' +
+      '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,sunrise,sunset,uv_index_max,wind_gusts_10m_max' +
+      '&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=10';
+    return jget(u);
+  }
+  async function loadAir(l){
+    return jget('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=' + l.lat + '&longitude=' + l.lon + '&current=us_aqi,pm2_5&timezone=auto');
+  }
+  async function loadPoint(l){
+    const key = 'pt.' + l.lat.toFixed(3) + ',' + l.lon.toFixed(3);
+    let p = store.get(key, null);
+    if (!p){
+      const j = await jget('https://api.weather.gov/points/' + l.lat.toFixed(4) + ',' + l.lon.toFixed(4), NWS);
+      p = {cwa:j.properties.cwa, forecast:j.properties.forecast, stations:j.properties.observationStations};
+      if (!l.temp) store.set(key, p);
+    }
+    return p;
+  }
+  function ceiling(layers){
+    if (!Array.isArray(layers) || !layers.length) return null;
+    const b = layers.filter(x => ['BKN', 'OVC', 'VV'].includes(x.amount) && x.base && x.base.value != null).map(x => x.base.value * 3.281);
+    return b.length ? Math.round(Math.min(...b) / 100) * 100 : 0;
+  }
+  async function loadObs(l, p){
+    const st = await jget(p.stations, NWS);
+    for (const f of (st.features || []).slice(0, 4)){
+      try{
+        const o = (await jget('https://api.weather.gov/stations/' + f.properties.stationIdentifier + '/observations/latest', NWS)).properties;
+        if (o.temperature && o.temperature.value != null && Date.now() - new Date(o.timestamp) < 2 * 3600000){
+          const c = f.geometry.coordinates;
+          return {id:f.properties.stationIdentifier, name:f.properties.name, tempF:c2f(o.temperature.value), time:o.timestamp,
+                  mi:km(l.lat, l.lon, c[1], c[0]) * 0.621, text:o.textDescription || '', ceil:ceiling(o.cloudLayers)};
+        }
+      }catch(e){}
+    }
+    return null;
+  }
+  async function loadText(p){
+    const j = await jget(p.forecast, NWS);
+    return (j.properties.periods || []).slice(0, 3).map(x => ({name:x.name, text:x.detailedForecast}));
+  }
+  async function loadAlerts(l){
+    const j = await jget('https://api.weather.gov/alerts/active?point=' + l.lat.toFixed(4) + ',' + l.lon.toFixed(4), NWS);
+    return (j.features || []).map(f => ({id:f.properties.id, event:f.properties.event, headline:f.properties.headline || '',
+      text:[f.properties.description, f.properties.instruction].filter(Boolean).join('\n\n')}));
+  }
+  async function loadTides(l){
+    const near = TIDE_STATIONS.map(s => ({...s, km:km(l.lat, l.lon, s.lat, s.lon)})).filter(s => s.km <= TIDE_MAX_KM).sort((a, b) => a.km - b.km).slice(0, 3);
+    const y = new Date(Date.now() - 86400000);
+    for (const s of near){
+      try{
+        const j = await jget(COOPS + '&product=predictions&datum=MLLW&interval=hilo&begin_date=' + ymd(y) + '&range=96&station=' + s.id);
+        if (j.predictions && j.predictions.length > 3)
+          return {station:s, ev:j.predictions.map(p => ({t:coopsTime(p.t).getTime(), v:parseFloat(p.v), hi:p.type === 'H'}))};
+      }catch(e){}
+    }
+    return null;
+  }
+  async function loadPier(l){
+    const s = MET_STATIONS.map(s => ({...s, km:km(l.lat, l.lon, s.lat, s.lon)})).filter(s => s.km <= MET_MAX_KM).sort((a, b) => a.km - b.km)[0];
+    if (!s) return null;
+    const g = prod => jget(COOPS + '&date=latest&product=' + prod + '&station=' + s.id).then(j => j.data && j.data[0]).catch(() => null);
+    const [w, a, wt] = await Promise.all([g('wind'), g('air_temperature'), g('water_temperature')]);
+    if (!w && !a && !wt) return null;
+    const first = w || a || wt;
+    return {station:s, time:coopsTime(first.t).getTime(),
+      wind: w ? {mph:parseFloat(w.s) * 1.151, gust:parseFloat(w.g) * 1.151, dir:w.dr || compass(parseFloat(w.d))} : null,
+      airF: a ? parseFloat(a.v) : null, waterF: wt ? parseFloat(wt.v) : null};
+  }
+
+  async function loadSyn(l){
+    const tok = (store.get('synTok', '') || BAKED.synTok);
+    if (!tok) return null;
+    const j = await jget('https://api.synopticdata.com/v2/stations/latest?token=' + encodeURIComponent(tok) + '&radius=' + l.lat + ',' + l.lon + ',10&limit=20' +
+      '&vars=air_temp,wind_speed,wind_gust,wind_direction&within=60&status=active&units=english,speed|mph&obtimezone=UTC');
+    if (!j.STATION) return {err:(j.SUMMARY && j.SUMMARY.RESPONSE_MESSAGE) || 'No data'};
+    const ob = (o, k) => o[k + '_value_1'] || o[k + '_value_1d'] || null;
+    const list = j.STATION.map(s => {
+      const o = s.OBSERVATIONS || {}, t = ob(o, 'air_temp'), w = ob(o, 'wind_speed'), g = ob(o, 'wind_gust'), d = ob(o, 'wind_direction');
+      return t && t.value != null ? {id:s.STID, name:s.NAME, mi:s.DISTANCE != null ? +s.DISTANCE : km(l.lat, l.lon, +s.LATITUDE, +s.LONGITUDE) * 0.621,
+        tempF:+t.value, time:t.date_time, mph:w ? +w.value : null, gust:g ? +g.value : null, dir:d ? compass(+d.value) : ''} : null;
+    }).filter(Boolean).sort((a, b) => a.mi - b.mi).slice(0, 6);
+    return {list};
+  }
+
+  async function loadAirNow(l){
+    const k = (store.get('anKey', '') || BAKED.anKey);
+    if (!k) return null;
+    let j;
+    const u = 'https://www.airnowapi.org/aq/observation/current/ziplatlong/?format=application/json&latitude=' + l.lat + '&longitude=' + l.lon + '&API_KEY=' + encodeURIComponent(k);
+    try{ j = await jget(u, null, 30000).catch(e => { if (e.name === 'AbortError') return jget(u, null, 30000); throw e; }); }
+    catch(e){ return {err: e.name === 'TypeError' ? 'blocked by the browser' : e.name === 'AbortError' ? 'timed out' : 'error ' + String(e.message).slice(0, 3)}; }
+    if (j && j.WebServiceError) return {err:String((j.WebServiceError[0] || {}).Message || 'no data').slice(0, 60)};
+    const pick = (o, ...ks) => { for (const k of ks) if (o[k] != null && o[k] !== '') return o[k]; return null; };
+    const rows = (Array.isArray(j) ? j : []).map(o => ({aqi:+pick(o, 'nowcastAQI', 'AQI', 'aqi'), cat:pick(o, 'aqiCategoryName') || (o.Category && o.Category.Name) || '',
+      what:pick(o, 'parameterName', 'ParameterName') || '', area:pick(o, 'siteName', 'reportingArea', 'ReportingArea') || 'AirNow'})).filter(r => r.aqi >= 0);
+    if (!rows.length) return {err:'no monitor data nearby'};
+    const top = rows.reduce((a, b) => (b.aqi > a.aqi ? b : a));
+    return {aqi:top.aqi, cat:top.cat, what:top.what, area:top.area};
+  }
+
+  // True for spots on San Francisco, San Pablo, or Suisun Bay shores, where ocean swell does not apply
+  function inBay(lat, lon){
+    if (lat < 37.40 || lat > 38.25 || lon < -122.53 || lon > -121.70) return false;
+    if (lat >= 37.81) return true;
+    const c = [[37.40, -122.42], [37.50, -122.47], [37.60, -122.50], [37.70, -122.505], [37.81, -122.51]];
+    let coast = c[0][1];
+    for (let i = 0; i < c.length - 1; i++) if (lat >= c[i][0] && lat <= c[i + 1][0]) coast = c[i][1] + (c[i + 1][1] - c[i][1]) * (lat - c[i][0]) / (c[i + 1][0] - c[i][0]);
+    return lon > coast + 0.03;       // more than about 1.5 miles inland from the ocean beach
+  }
+  // Active wildfires: NIFC interagency feed (points + mapped perimeters), no key
+  const NIFC = 'https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/';
+  const fireLayer = L.layerGroup().addTo(map);
+  async function loadFires(l){
+    const d = 1.5, env = [l.lon - d * 1.27, l.lat - d, l.lon + d * 1.27, l.lat + d].map(v => v.toFixed(3)).join(',');
+    const q = '/FeatureServer/0/query?f=geojson&outSR=4326&inSR=4326&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&geometry=' + env;
+    const j = await jget(NIFC + 'WFIGS_Incident_Locations_Current' + q + '&outFields=*&where=' + encodeURIComponent("IncidentTypeCategory='WF'"), null, 25000);
+    const list = (j.features || []).map(f => {
+      const p = f.properties || {}, c = f.geometry && f.geometry.coordinates;
+      if (!c) return null;
+      const acres = +(p.IncidentSize != null ? p.IncidentSize : p.DailyAcres != null ? p.DailyAcres : p.DiscoveryAcres) || 0;
+      const r = Math.PI / 180, brg = (Math.atan2(Math.sin((c[0] - l.lon) * r) * Math.cos(c[1] * r),
+        Math.cos(l.lat * r) * Math.sin(c[1] * r) - Math.sin(l.lat * r) * Math.cos(c[1] * r) * Math.cos((c[0] - l.lon) * r)) / r + 360) % 360;
+      return {name:p.IncidentName || 'Unnamed', acres, pct:p.PercentContained, lat:c[1], lon:c[0], mi:km(l.lat, l.lon, c[1], c[0]) * 0.621,
+        dir:compass(brg), start:p.FireDiscoveryDateTime, county:p.POOCounty || ''};
+    }).filter(x => x && x.mi <= 100 && (x.acres >= 10 || x.mi <= 15)).sort((a, b) => a.mi - b.mi).slice(0, 25);
+    let per = null;
+    try{ per = await jget(NIFC + 'WFIGS_Interagency_Perimeters_Current' + q + '&outFields=poly_IncidentName&geometryPrecision=4&maxAllowableOffset=0.0005', null, 25000); }catch(e){}
+    return {list, per};
+  }
+  function fireLine(f){
+    return (f.acres ? Math.round(f.acres).toLocaleString() + ' acres' : 'size not reported') + (f.pct != null ? ', ' + Math.round(f.pct) + '% contained' : '');
+  }
+  function drawFires(fr){
+    fireLayer.clearLayers();
+    if (!fr) return;
+    if (fr.per && fr.per.features && fr.per.features.length)
+      L.geoJSON(fr.per, {interactive:false, style:{color:'#FF5A36', weight:1.5, fillColor:'#FF5A36', fillOpacity:.25}}).addTo(fireLayer);
+    fr.list.forEach(f => {
+      L.circleMarker([f.lat, f.lon], {pane:'fire', radius:Math.max(5, Math.min(14, 4 + Math.log10(f.acres + 1) * 2.5)), color:'#fff', weight:1.5,
+        fillColor:'#FF5A36', fillOpacity:.9, bubblingMouseEvents:false})
+        .bindPopup('<b>' + esc(f.name) + ' Fire</b><br>' + fireLine(f) + (f.county ? '<br>' + esc(f.county) + ' County' : '') +
+          (f.start ? '<br>Started ' + new Date(f.start).toLocaleDateString([], {month:'short', day:'numeric'}) : '')).addTo(fireLayer);
+    });
+  }
+  async function loadSea(l){
+    if (inBay(l.lat, l.lon)) return null;
+    const j = await jget('https://marine-api.open-meteo.com/v1/marine?latitude=' + l.lat + '&longitude=' + l.lon +
+      '&current=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction&length_unit=imperial&timezone=auto');
+    const c = j.current;
+    if (!c || c.wave_height == null) return null;
+    const mi = km(l.lat, l.lon, j.latitude, j.longitude) * 0.621;
+    if (mi > 20) return null;          // nearest ocean cell too far to mean anything here
+    const ft = v => v == null ? null : (j.current_units && j.current_units.wave_height === 'm' ? v * 3.281 : v);
+    return {mi, wave:ft(c.wave_height), wp:c.wave_period, wd:c.wave_direction, swell:ft(c.swell_wave_height), sp:c.swell_wave_period, sd:c.swell_wave_direction};
+  }
+  // PM2.5 from the nearest Synoptic air sensor, converted to US AQI (EPA 2024 breakpoints)
+  function pmAqi(c){
+    const bp = [[0,9,0,50],[9.1,35.4,51,100],[35.5,55.4,101,150],[55.5,125.4,151,200],[125.5,225.4,201,300],[225.5,500,301,500]];
+    c = Math.max(0, Math.round(c * 10) / 10);
+    for (const b of bp) if (c <= b[1]) return Math.round((b[3] - b[2]) / (b[1] - b[0]) * (Math.max(c, b[0]) - b[0]) + b[2]);
+    return 500;
+  }
+  async function loadSynPM(l){
+    const tok = (store.get('synTok', '') || BAKED.synTok);
+    if (!tok) return null;
+    const j = await jget('https://api.synopticdata.com/v2/stations/latest?token=' + encodeURIComponent(tok) + '&radius=' + l.lat + ',' + l.lon + ',15&limit=8&vars=PM_25_concentration&within=120&status=active&obtimezone=UTC');
+    const hit = (j.STATION || []).map(s => { const o = (s.OBSERVATIONS || {}).PM_25_concentration_value_1;
+      return o && o.value != null && o.value >= 0 ? {name:s.NAME, mi:+s.DISTANCE, pm:+o.value, time:o.date_time} : null; }).filter(Boolean).sort((a, b) => a.mi - b.mi)[0];
+    return hit ? {...hit, aqi:pmAqi(hit.pm)} : null;
+  }
+
+  function load(l){
+    const my = ++token;
+    const put = (k, pr) => pr.then(v => { if (my === token){ D[k] = v; render(); } }).catch(() => {});
+    const all = [
+      put('om', loadModel(l)), put('air', loadAir(l)), put('alerts', loadAlerts(l)),
+      put('tides', loadTides(l)), put('pier', loadPier(l)), put('syn', loadSyn(l)), put('airnow', loadAirNow(l)), put('sea', loadSea(l)),
+      loadFires(l).then(fr => { if (my !== token) return; D.fires = fr.list; drawFires(fr); render(); }).catch(() => {}), put('synpm', loadSynPM(l)),
+      loadPoint(l).then(p => { if (my !== token) return; D.cwa = p.cwa; return Promise.all([put('obs', loadObs(l, p)), put('nws', loadText(p))]); }).catch(() => {})
+    ];
+    Promise.all(all).then(() => {
+      if (my !== token) return;
+      if (D.om){ D.ts = Date.now(); if (!l.temp) store.set('cache.' + l.id, D); }
+      render();
+    });
+  }
+
+  // ---------- render ----------
+  function render(){
+    renderChips(); renderAlert();
+    const om = D.om, c = om && om.current;
+    $('unit').textContent = '°' + unit;
+    if (c){
+      const w = wmo(c.weather_code, c.is_day);
+      const near = ((D.syn && D.syn.list) || []).find(x => x.mi <= 1 && Date.now() - new Date(x.time) < 30 * 60000);
+      $('temp').textContent = T(near ? near.tempF : c.temperature_2m);
+      $('icon').innerHTML = w.icon;
+      $('cond').innerHTML = '<b>' + w.text + '</b>Feels ' + T(c.apparent_temperature) + '° · ' + compass(c.wind_direction_10m) + ' ' + Math.round(c.wind_speed_10m) + ' mph';
+      let s = 'HRRR model at this point';
+      const n = D.syn && D.syn.list && D.syn.list[0];
+      if (near) s = 'Measured at ' + esc(near.id) + ', ' + near.mi.toFixed(1) + ' mi away, ' + ago(new Date(near.time)) + ' · HRRR model ' + T(c.temperature_2m) + '°';
+      else if (n) s += ' · ' + esc(n.id) + ' measured ' + T(n.tempF) + '°, ' + n.mi.toFixed(1) + ' mi away, ' + ago(new Date(n.time));
+      else if (D.obs) s += ' · ' + esc(D.obs.id) + ' measured ' + T(D.obs.tempF) + '°, ' + D.obs.mi.toFixed(0) + ' mi away, ' + ago(new Date(D.obs.time));
+      $('src').innerHTML = s;
+    } else { $('temp').textContent = '--'; $('icon').textContent = ''; $('cond').textContent = 'Loading'; $('src').textContent = ''; }
+    renderDays(); renderHours(); renderNear(); renderPier(); renderSea(); renderFires(); renderTides(); renderDetails(); renderText();
+    $('stamp').textContent = D.ts ? clock(new Date(D.ts)) + ' ↻' : 'Loading';
+  }
+  function renderChips(){
+    const h = locs().map(l => '<button class="chip' + (l.id === active.id ? ' on' : '') + '" data-id="' + esc(l.id) + '">' + esc(l.name) + '</button>').join('');
+    $('chips').innerHTML = h + (pin && active.id === 'pin' ? '<button class="chip" data-id="save">Save pin</button>' : '') + '<button class="chip" data-id="+">+ Add</button>';
+    const on = $('chips').querySelector('.on'); if (on && on.scrollIntoView) on.scrollIntoView({block:'nearest', inline:'nearest'});
+  }
+  function renderAlert(){
+    const a = (D.alerts || []).filter(x => !dismissed.includes(x.id)), box = $('alertBox');
+    if (!a.length){ box.innerHTML = ''; return; }
+    const open = box.querySelector('.full') ? true : false;
+    box.innerHTML = '<div class="alert"><div class="tx" id="alTx"><b>' + esc(a[0].event) + (a.length > 1 ? ' (+' + (a.length - 1) + ' more)' : '') + '</b>' +
+      esc(a[0].headline) + (open ? '<div class="full">' + esc(a[0].text) + '</div>' : ' <u>Tap for details</u>') + '</div><button class="x" id="alX" aria-label="Dismiss alert">×</button></div>';
+    $('alTx').onclick = () => { const f = box.querySelector('.full'); if (f) f.remove(); else { const d = document.createElement('div'); d.className = 'full'; d.textContent = a[0].text; $('alTx').appendChild(d); } };
+    $('alX').onclick = () => { dismissed.push(a[0].id); dismissed = dismissed.slice(-40); store.set('dismissed', dismissed); renderAlert(); };
+  }
+  function renderDays(){
+    const d = D.om && D.om.daily;
+    if (!d){ $('days').innerHTML = ''; $('daynote').textContent = ''; return; }
+    $('days').innerHTML = d.time.map((t, i) => {
+      const dt = new Date(t + 'T12:00'), pp = d.precipitation_probability_max[i];
+      return '<button class="day' + (i === selDay ? ' sel' : '') + '" data-i="' + i + '">' + (i === 0 ? 'Today' : dt.toLocaleDateString([], {weekday:'short'})) +
+        '<i>' + wmo(d.weather_code[i], 1).icon + '</i><b>' + T(d.temperature_2m_max[i]) + '°</b>' + T(d.temperature_2m_min[i]) + '°<u>' + (pp >= 20 ? pp + '%' : '') + '</u></button>';
+    }).join('');
+    if (selDay >= 0 && d.time[selDay]){
+      const i = selDay, dt = new Date(d.time[i] + 'T12:00');
+      $('daynote').textContent = dt.toLocaleDateString([], {weekday:'long', month:'short', day:'numeric'}) + ': ' + wmo(d.weather_code[i], 1).text +
+        ', ' + T(d.temperature_2m_max[i]) + '° / ' + T(d.temperature_2m_min[i]) + '°, rain ' + (d.precipitation_probability_max[i] || 0) + '% (' +
+        (d.precipitation_sum[i] || 0).toFixed(2) + ' in), gusts ' + Math.round(d.wind_gusts_10m_max[i]) + ' mph, sun ' +
+        clock(new Date(d.sunrise[i])) + ' to ' + clock(new Date(d.sunset[i]));
+    } else $('daynote').textContent = '';
+  }
+  function hourStart(){
+    const h = D.om.hourly, now = D.om.current.time.slice(0, 13);
+    const i = h.time.findIndex(t => t.slice(0, 13) >= now);
+    return i < 0 ? 0 : i;
+  }
+  function renderHours(){
+    const h = D.om && D.om.hourly;
+    if (!h){ $('hours').innerHTML = ''; return; }
+    const s = hourStart(); let out = '';
+    for (let i = s; i < Math.min(s + 48, h.time.length); i++){
+      const dt = new Date(h.time[i]), pp = h.precipitation_probability[i], mid = dt.getHours() === 0;
+      out += '<div class="hr' + (mid ? ' d0' : '') + '" data-day="' + h.time[i].slice(0, 10) + '">' + (mid ? dt.toLocaleDateString([], {weekday:'short'}) : i === s ? 'Now' : hourLbl(dt)) +
+        '<i>' + wmo(h.weather_code[i], h.is_day[i]).icon + '</i><b>' + T(h.temperature_2m[i]) + '°</b><u>' + (pp >= 15 ? pp + '%' : '') + '</u>' +
+        compass(h.wind_direction_10m[i]) + ' ' + Math.round(h.wind_speed_10m[i]) + '</div>';
+    }
+    $('hours').innerHTML = out;
+  }
+  function renderNear(){
+    const y = D.syn;
+    if (!y){ $('nearWrap').innerHTML = ''; return; }
+    if (!y.list || !y.list.length){ $('nearWrap').innerHTML = '<div class="hd">Nearby stations</div><p class="txt">' + esc(y.err || 'No stations reporting within 10 miles.') + '</p>'; return; }
+    $('nearWrap').innerHTML = '<div class="hd">Nearby stations, measured (Synoptic)</div>' + y.list.map(s =>
+      '<div class="tl">' + T(s.tempF) + '° ' + (s.mph != null ? esc(s.dir) + ' ' + Math.round(s.mph) + (s.gust ? ' g' + Math.round(s.gust) : '') + ' mph' : '') +
+      '<span>' + esc(s.name).slice(0, 26) + ' · ' + s.mi.toFixed(1) + ' mi · ' + ago(new Date(s.time)) + '</span></div>').join('');
+  }
+  function renderPier(){
+    const p = D.pier;
+    if (!p){ $('straitWrap').innerHTML = ''; return; }
+    const kv = [];
+    if (p.wind) kv.push(['Wind', esc(p.wind.dir) + ' ' + Math.round(p.wind.mph) + ' mph, gusts ' + Math.round(p.wind.gust)]);
+    if (p.airF != null) kv.push(['Air at the water', T(p.airF) + '°']);
+    if (p.waterF != null) kv.push(['Water temp', T(p.waterF) + '°']);
+    $('straitWrap').innerHTML = '<div class="hd">Measured at ' + esc(p.station.name) + ' · ' + (p.station.km * 0.621).toFixed(1) + ' mi · ' + ago(new Date(p.time)) + '</div><div class="grid">' +
+      kv.map(x => '<div class="kv">' + x[0] + '<b>' + x[1] + '</b></div>').join('') + '</div>';
+  }
+  function renderSea(){
+    const m = D.sea;
+    if (!m){ $('seaWrap').innerHTML = ''; return; }
+    const f = (h, p, d) => h == null ? '--' : h.toFixed(1) + ' ft' + (p != null ? ' @ ' + Math.round(p) + ' s' : '') + (d != null ? ' ' + compass(d) : '');
+    $('seaWrap').innerHTML = '<div class="hd">Ocean, model · nearest open water ' + m.mi.toFixed(0) + ' mi</div><div class="grid">' +
+      '<div class="kv">Swell<b>' + f(m.swell, m.sp, m.sd) + '</b></div><div class="kv">Total waves<b>' + f(m.wave, m.wp, m.wd) + '</b></div></div>';
+  }
+  function renderFires(){
+    const f = D.fires;
+    if (!f){ $('fireWrap').innerHTML = ''; return; }
+    $('fireWrap').innerHTML = '<div class="hd">Wildfires within 100 miles (NIFC)</div>' + (f.length ? f.slice(0, 6).map(x =>
+      '<div class="tl">' + esc(x.name) + '<span>' + fireLine(x) + ' · ' + x.mi.toFixed(0) + ' mi ' + x.dir + '</span></div>').join('') :
+      '<p class="txt">No active wildfires reported.</p>');
+  }
+  function tideAt(ev, t){
+    for (let i = 0; i < ev.length - 1; i++){
+      const a = ev[i], b = ev[i + 1];
+      if (t >= a.t && t <= b.t) return a.v + (b.v - a.v) * (1 - Math.cos(Math.PI * (t - a.t) / (b.t - a.t))) / 2;
+    }
+    return null;
+  }
+  function renderTides(){
+    const td = D.tides;
+    if (!td){ $('tideWrap').innerHTML = ''; return; }
+    const now = Date.now(), t0 = now - 3 * 3600000, t1 = now + 24 * 3600000, W = 300, H = 70, pts = [];
+    for (let t = t0; t <= t1; t += 600000){ const v = tideAt(td.ev, t); if (v != null) pts.push([t, v]); }
+    let svg = '';
+    if (pts.length > 2){
+      const lo = Math.min(...pts.map(p => p[1])), hi = Math.max(...pts.map(p => p[1]));
+      const X = t => (t - t0) / (t1 - t0) * W, Y = v => H - 8 - (v - lo) / (hi - lo || 1) * (H - 16);
+      const path = pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join('');
+      const nv = tideAt(td.ev, now);
+      svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><path d="' + path + 'L' + W + ' ' + H + 'L0 ' + H + 'Z" fill="var(--ice)" opacity=".14"/><path d="' + path +
+        '" fill="none" stroke="var(--ice)" stroke-width="1.5" vector-effect="non-scaling-stroke"/><line x1="' + X(now) + '" x2="' + X(now) + '" y1="0" y2="' + H +
+        '" stroke="var(--amber)" stroke-width="1" vector-effect="non-scaling-stroke"/>' + (nv != null ? '<circle cx="' + X(now) + '" cy="' + Y(nv) + '" r="2.5" fill="var(--amber)"/>' : '') + '</svg>';
+    }
+    const next = td.ev.filter(e => e.t > now).slice(0, 4), nv = tideAt(td.ev, now);
+    const rising = next[0] && next[0].hi;
+    $('tideWrap').innerHTML = '<div class="hd">Tides · ' + esc(td.station.name) + ' · ' + (td.station.km * 0.621).toFixed(1) + ' mi</div><div class="tide">' +
+      '<div class="tl"><b>' + (rising ? 'Rising ▲' : 'Falling ▼') + '</b><span>' + (nv != null ? 'about ' + nv.toFixed(1) + ' ft now' : '') + '</span></div>' + svg +
+      next.map(e => { const d = new Date(e.t), tom = d.getDate() !== new Date().getDate();
+        return '<div class="tl">' + (e.hi ? 'High' : 'Low') + ' ' + e.v.toFixed(1) + ' ft<span>' + (tom ? d.toLocaleDateString([], {weekday:'short'}) + ' ' : '') + clock(d) + '</span></div>'; }).join('') + '</div>';
+  }
+  function renderDetails(){
+    const om = D.om;
+    if (!om){ $('details').innerHTML = ''; return; }
+    const c = om.current, d = om.daily, vu = (om.current_units || {}).visibility;
+    const vis = c.visibility == null ? null : c.visibility / (vu === 'ft' ? 5280 : 1609.34);
+    const hs = hourStart(), low = om.hourly.cloud_cover_low[hs];
+    const kv = [
+      ['Humidity', Math.round(c.relative_humidity_2m) + '%'], ['Dew point', T(c.dew_point_2m) + '°'],
+      ['Wind', compass(c.wind_direction_10m) + ' ' + Math.round(c.wind_speed_10m) + ' mph'], ['Gusts', Math.round(c.wind_gusts_10m) + ' mph'],
+      ['Visibility', vis == null ? '--' : (vis >= 10 ? '10+' : vis.toFixed(1)) + ' mi' + (vis != null && vis < 1 ? ' (fog)' : '')],
+      ['Low cloud', low == null ? '--' : Math.round(low) + '%'],
+      ['Pressure', (c.pressure_msl * 0.02953).toFixed(2) + ' in'], ['UV max today', d.uv_index_max[0] == null ? '--' : d.uv_index_max[0].toFixed(0)],
+      ['Sunrise', clock(new Date(d.sunrise[0]))], ['Sunset', clock(new Date(d.sunset[0]))],
+      ['Rain today', (d.precipitation_sum[0] || 0).toFixed(2) + ' in']
+    ];
+    if (D.obs && D.obs.ceil != null) kv.push(['Cloud ceiling (' + esc(D.obs.id) + ')', D.obs.ceil ? D.obs.ceil.toLocaleString() + ' ft' : 'None']);
+    const a = D.air && D.air.current, an = D.airnow, sp = D.synpm;
+    const cat = q => q <= 50 ? 'Good' : q <= 100 ? 'Moderate' : q <= 150 ? 'Sensitive groups' : q <= 200 ? 'Unhealthy' : 'Very unhealthy';
+    if (an && an.aqi >= 0){
+      kv.push(['Air quality, measured (' + esc(an.area) + ')', an.aqi + ' ' + esc(an.cat || cat(an.aqi)) + ' · ' + esc(an.what)]);
+    } else if (sp){
+      kv.push(['Air, PM2.5 sensor ' + sp.mi.toFixed(1) + ' mi, ' + ago(new Date(sp.time)), sp.aqi + ' ' + cat(sp.aqi)]);
+    } else if (a && a.us_aqi != null){
+      const q = a.us_aqi, cat = q <= 50 ? 'Good' : q <= 100 ? 'Moderate' : q <= 150 ? 'Sensitive groups' : q <= 200 ? 'Unhealthy' : 'Very unhealthy';
+      kv.push(['Air quality (regional model)', Math.round(q) + ' ' + cat]);
+    }
+    if (an && an.err) kv.push(['AirNow status', '<span style="font-size:12px;font-weight:400">' + esc(an.err) + '</span>']);
+    $('details').innerHTML = kv.map(x => '<div class="kv">' + x[0] + '<b>' + x[1] + '</b></div>').join('');
+  }
+  function renderText(){
+    $('nwsWrap').innerHTML = D.nws && D.nws.length ? '<div class="hd">NWS forecaster text</div>' + D.nws.map(p => '<p class="txt"><b>' + esc(p.name) + ':</b> ' + esc(p.text) + '</p>').join('') : '';
+    $('links').innerHTML = (D.cwa ? '<a href="https://forecast.weather.gov/product.php?site=' + esc(D.cwa) + '&issuedby=' + esc(D.cwa) + '&product=AFD" target="_blank" rel="noopener">Forecast discussion</a>' : '') +
+      '<a href="https://forecast.weather.gov/MapClick.php?lat=' + active.lat + '&lon=' + active.lon + '" target="_blank" rel="noopener">NWS point page</a>';
+  }
+
+  // ---------- location handling ----------
+  function select(l){
+    active = l; selDay = -1;
+    if (!l.temp) store.set('active', l.id);
+    D = l.temp ? {} : (store.get('cache.' + l.id, {}) || {});
+    fireLayer.clearLayers();
+    if (marker) map.removeLayer(marker);
+    marker = L.circleMarker([l.lat, l.lon], {radius:6, color:'#FFB454', weight:2, fillColor:'#FFB454', fillOpacity:.6}).addTo(map);
+    render(); if (!l.temp) setTimeout(recenter, 60);
+    load(l);
+  }
+  $('chips').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    if (b.dataset.id === '+'){ $('manage').classList.toggle('open'); renderSaved(); if ($('manage').classList.contains('open')) $('q').focus(); return; }
+    if (b.dataset.id === 'save' && pin){ const q = pin; pin = null; addPlace(q.name, q.lat, q.lon); return; }
+    const l = locs().find(x => x.id === b.dataset.id); if (l){ $('manage').classList.remove('open'); select(l); }
+  });
+  map.on('click', async e => {
+    const lat = +e.latlng.lat.toFixed(4), lon = +e.latlng.lng.toFixed(4);
+    pin = {id:'pin', name:'Pin', lat, lon, temp:true};
+    $('manage').classList.remove('open');
+    select(pin);
+    try{
+      const j = await jget('https://nominatim.openstreetmap.org/reverse?format=json&zoom=14&lat=' + lat + '&lon=' + lon);
+      const a = j.address || {}, n = a.neighbourhood || a.suburb || a.hamlet || a.village || a.town || a.city || a.county;
+      if (n && pin && pin.lat === lat && pin.lon === lon){ pin.name = n; renderChips(); }
+    }catch(err){}
+  });
+  function renderSaved(){
+    $('savedList').innerHTML = saved.length ? '<div class="hd">Saved places</div>' + saved.map(l => '<button class="row" data-del="' + esc(l.id) + '">' + esc(l.name) + '<span>×</span></button>').join('') : '';
+  }
+  $('savedList').addEventListener('click', e => {
+    const b = e.target.closest('[data-del]'); if (!b) return;
+    saved = saved.filter(l => l.id !== b.dataset.del); store.set('saved', saved); renderSaved();
+    if (active.id === b.dataset.del) select(DEFAULTS[0]); else renderChips();
+  });
+  function addPlace(name, lat, lon){
+    const l = {id:'p' + Date.now(), name, lat:+lat.toFixed(4), lon:+lon.toFixed(4)};
+    saved.push(l); store.set('saved', saved);
+    $('manage').classList.remove('open'); $('q').value = ''; $('results').innerHTML = '';
+    select(l);
+  }
+  let qt = null;
+  $('q').addEventListener('input', e => {
+    clearTimeout(qt); const q = e.target.value.trim();
+    if (q.length < 3){ $('results').innerHTML = ''; return; }
+    qt = setTimeout(async () => {
+      try{
+        const items = await jget('https://nominatim.openstreetmap.org/search?format=json&countrycodes=us&limit=5&viewbox=-123.6,38.9,-121.2,36.2&q=' + encodeURIComponent(q));
+        $('results').innerHTML = '';
+        items.forEach(it => {
+          const parts = it.display_name.split(',').map(s => s.trim()), b = document.createElement('button');
+          b.className = 'row'; b.textContent = parts.slice(0, 3).join(', ');
+          b.onclick = () => addPlace(parts[0], parseFloat(it.lat), parseFloat(it.lon));
+          $('results').appendChild(b);
+        });
+      }catch(e){}
+    }, 450);
+  });
+  $('synTok').value = (store.get('synTok', '') || BAKED.synTok);
+  $('synTok').addEventListener('change', e => { store.set('synTok', e.target.value.trim()); load(active); });
+  $('anKey').value = (store.get('anKey', '') || BAKED.anKey);
+  $('anKey').addEventListener('change', e => { store.set('anKey', e.target.value.trim()); load(active); });
+  $('hereBtn').addEventListener('click', () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(p => addPlace('My location', p.coords.latitude, p.coords.longitude), () => {}, {timeout:8000});
+  });
+  function applyTheme(){
+    document.body.dataset.theme = theme; setBase(); setSat();
+    const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = theme === 'light' ? '#E8EEF3' : '#0B1220';
+  }
+  $('themeBtn').addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; store.set('theme', theme); applyTheme(); });
+  $('unit').addEventListener('click', () => { unit = unit === 'F' ? 'C' : 'F'; store.set('unit', unit); render(); });
+  $('days').addEventListener('click', e => {
+    const b = e.target.closest('.day'); if (!b) return;
+    const i = +b.dataset.i; selDay = selDay === i ? -1 : i; renderDays();
+    if (selDay >= 0){ const el = $('hours').querySelector('[data-day="' + D.om.daily.time[i] + '"]'); if (el) $('hours').scrollLeft = el.offsetLeft - $('hours').offsetLeft; }
+  });
+  $('moreBtn').addEventListener('click', () => {
+    const on = $('sheet').classList.toggle('exp');
+    $('moreBtn').textContent = on ? 'Back to radar ▾' : 'Hourly, tides, details ▴';
+    $('top').style.display = on ? 'none' : '';
+  });
+  function refresh(){ buildRadar(); setSat(); if (playing) setPlaying(true); load(active); }
+  $('stamp').addEventListener('click', refresh);
+  setInterval(refresh, 10 * 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - (D.ts || 0) > 5 * 60000) refresh(); });
+
+  // ---------- boot ----------
+  applyTheme(); buildRadar(); select(active);
+})();
+</script>
+</body>
+</html>
