@@ -106,7 +106,8 @@
   .leaflet-control-zoom{display:none}
   #satBtn{position:absolute;right:0;top:-44px;padding:8px 12px;border-radius:999px;font-size:12.5px;color:var(--dim)}
   #satBtn.on{color:var(--ink);background:var(--ice);border-color:var(--ice);font-weight:600}
-  #sheet.exp #satBtn{display:none}
+  #sheet.exp #satBtn,#sheet.exp #locBtn{display:none}
+  #locBtn{position:absolute;left:0;top:-44px;padding:8px 12px;border-radius:999px;font-size:12.5px;color:var(--dim)}
   .wi{width:1em;height:1em;display:inline-block;vertical-align:middle}
   .more label{display:flex;align-items:center;gap:5px;font-size:10.5px}
   .more input[type=range]{width:64px;accent-color:var(--ice)}
@@ -144,6 +145,7 @@
 
 <div id="sheet" class="card">
   <button id="satBtn" class="card">Clouds</button>
+  <button id="locBtn" class="card">Locate me</button>
   <div class="bar-top">
     <button class="play" id="playBtn" aria-label="Play or pause radar"><svg id="playIcon" viewBox="0 0 16 16"><path d="M4 2l10 6-10 6z"/></svg></button>
     <div class="track" id="track"><div class="track-line"></div><div class="track-past" id="trackPast"></div><div class="knob" id="knob"></div></div>
@@ -531,12 +533,41 @@
   }
 
   // ---------- render ----------
+  function isDayNow(){
+    const d = D.om && D.om.daily;
+    if (!d || !d.sunrise || !d.sunrise[0]) return D.om && D.om.current ? D.om.current.is_day : 1;
+    const t = Date.now();
+    return t >= new Date(d.sunrise[0]).getTime() && t < new Date(d.sunset[0]).getTime() ? 1 : 0;
+  }
+  // Turn an observer's sky report ("Mostly Cloudy", "Light Rain") into the same codes the model uses
+  function skyCode(txt){
+    const t = String(txt || '').toLowerCase();
+    if (!t) return null;
+    if (t.includes('thunder')) return 95;
+    if (t.includes('snow') || t.includes('sleet') || t.includes('ice')) return 71;
+    if (t.includes('drizzle')) return 51;
+    if (t.includes('rain') || t.includes('shower')) return 61;
+    if (t.includes('fog') || t.includes('mist') || t.includes('haze') || t.includes('smoke')) return 45;
+    if (t.includes('overcast') || t.includes('mostly cloudy')) return 3;
+    if (t.includes('partly') || t.includes('few clouds')) return 2;
+    if (t.includes('cloud')) return 3;
+    if (t.includes('mostly clear') || t.includes('mostly sunny')) return 1;
+    if (t.includes('clear') || t.includes('fair') || t.includes('sunny')) return 0;
+    return null;
+  }
   function render(){
+    const keep = ['chips', 'days', 'hours'].map(id => $(id).scrollLeft);
+    renderAll();
+    ['chips', 'days', 'hours'].forEach((id, i) => { $(id).scrollLeft = keep[i]; });
+  }
+  function renderAll(){
     renderChips(); renderAlert();
     const om = D.om, c = om && om.current;
     $('unit').textContent = '°' + unit;
     if (c){
-      const w = wmo(c.weather_code, c.is_day);
+      const seen = D.obs && Date.now() - new Date(D.obs.time) < 75 * 60000 ? skyCode(D.obs.text) : null;
+      const w = wmo(seen != null ? seen : c.weather_code, isDayNow());
+      if (seen != null) w.text = esc(D.obs.text) + ' <span style="font-weight:400;color:var(--dim);font-size:11px">seen at ' + esc(D.obs.id) + '</span>';
       const near = ((D.syn && D.syn.list) || []).find(x => x.mi <= 1 && Date.now() - new Date(x.time) < 30 * 60000);
       $('temp').textContent = T(near ? near.tempF : c.temperature_2m);
       $('icon').innerHTML = w.icon;
@@ -549,12 +580,11 @@
       $('src').innerHTML = s;
     } else { $('temp').textContent = '--'; $('icon').textContent = ''; $('cond').textContent = 'Loading'; $('src').textContent = ''; }
     renderDays(); renderHours(); renderNear(); renderPier(); renderSea(); renderFires(); renderTides(); renderDetails(); renderText();
-    $('stamp').textContent = D.ts ? clock(new Date(D.ts)) + ' ↻' : 'Loading';
+    $('stamp').textContent = D.ts ? 'Data ' + clock(new Date(D.ts)) + ' ↻' : 'Loading';
   }
   function renderChips(){
     const h = locs().map(l => '<button class="chip' + (l.id === active.id ? ' on' : '') + '" data-id="' + esc(l.id) + '">' + esc(l.name) + '</button>').join('');
     $('chips').innerHTML = h + (pin && active.id === 'pin' ? '<button class="chip" data-id="save">Save pin</button>' : '') + '<button class="chip" data-id="+">+ Add</button>';
-    const on = $('chips').querySelector('.on'); if (on && on.scrollIntoView) on.scrollIntoView({block:'nearest', inline:'nearest'});
   }
   function renderAlert(){
     const a = (D.alerts || []).filter(x => !dismissed.includes(x.id)), box = $('alertBox');
@@ -593,7 +623,7 @@
     for (let i = s; i < Math.min(s + 48, h.time.length); i++){
       const dt = new Date(h.time[i]), pp = h.precipitation_probability[i], mid = dt.getHours() === 0;
       out += '<div class="hr' + (mid ? ' d0' : '') + '" data-day="' + h.time[i].slice(0, 10) + '">' + (mid ? dt.toLocaleDateString([], {weekday:'short'}) : i === s ? 'Now' : hourLbl(dt)) +
-        '<i>' + wmo(h.weather_code[i], h.is_day[i]).icon + '</i><b>' + T(h.temperature_2m[i]) + '°</b><u>' + (pp >= 15 ? pp + '%' : '') + '</u>' +
+        '<i>' + wmo(h.weather_code[i], i === s ? isDayNow() : h.is_day[i]).icon + '</i><b>' + T(h.temperature_2m[i]) + '°</b><u>' + (pp >= 15 ? pp + '%' : '') + '</u>' +
         compass(h.wind_direction_10m[i]) + ' ' + Math.round(h.wind_speed_10m[i]) + '</div>';
     }
     $('hours').innerHTML = out;
@@ -602,7 +632,8 @@
     const y = D.syn;
     if (!y){ $('nearWrap').innerHTML = ''; return; }
     if (!y.list || !y.list.length){ $('nearWrap').innerHTML = '<div class="hd">Nearby stations</div><p class="txt">' + esc(y.err || 'No stations reporting within 10 miles.') + '</p>'; return; }
-    $('nearWrap').innerHTML = '<div class="hd">Nearby stations, measured (Synoptic)</div>' + y.list.map(s =>
+    const pierName = D.pier ? D.pier.station.name.toLowerCase() : null;
+    $('nearWrap').innerHTML = '<div class="hd">Nearby stations, measured (Synoptic)</div>' + y.list.filter(s => !pierName || String(s.name).toLowerCase() !== pierName).map(s =>
       '<div class="tl">' + T(s.tempF) + '° ' + (s.mph != null ? esc(s.dir) + ' ' + Math.round(s.mph) + (s.gust ? ' g' + Math.round(s.gust) : '') + ' mph' : '') +
       '<span>' + esc(s.name).slice(0, 26) + ' · ' + s.mi.toFixed(1) + ' mi · ' + ago(new Date(s.time)) + '</span></div>').join('');
   }
@@ -703,6 +734,7 @@
     if (marker) map.removeLayer(marker);
     marker = L.circleMarker([l.lat, l.lon], {radius:6, color:'#FFB454', weight:2, fillColor:'#FFB454', fillOpacity:.6}).addTo(map);
     render(); if (!l.temp) setTimeout(recenter, 60);
+    const on = $('chips').querySelector('.on'); if (on && on.scrollIntoView) on.scrollIntoView({block:'nearest', inline:'nearest'});
     load(l);
   }
   $('chips').addEventListener('click', e => {
@@ -710,6 +742,20 @@
     if (b.dataset.id === '+'){ $('manage').classList.toggle('open'); renderSaved(); if ($('manage').classList.contains('open')) $('q').focus(); return; }
     if (b.dataset.id === 'save' && pin){ const q = pin; pin = null; addPlace(q.name, q.lat, q.lon); return; }
     const l = locs().find(x => x.id === b.dataset.id); if (l){ $('manage').classList.remove('open'); select(l); }
+  });
+  // Show weather for wherever the phone is right now, and center the map there
+  $('locBtn').addEventListener('click', () => {
+    const b = $('locBtn'), fail = () => { b.textContent = 'Location off'; setTimeout(() => { b.textContent = 'Locate me'; }, 3000); };
+    if (!navigator.geolocation) return fail();
+    b.textContent = 'Locating';
+    navigator.geolocation.getCurrentPosition(p => {
+      b.textContent = 'Locate me';
+      pin = {id:'pin', name:'My location', lat:+p.coords.latitude.toFixed(4), lon:+p.coords.longitude.toFixed(4), temp:true};
+      $('manage').classList.remove('open');
+      if (map.getZoom() < 9) map.setZoom(9, {animate:false});
+      select(pin);
+      setTimeout(recenter, 60);
+    }, fail, {timeout:12000, enableHighAccuracy:true, maximumAge:60000});
   });
   map.on('click', async e => {
     const lat = +e.latlng.lat.toFixed(4), lon = +e.latlng.lng.toFixed(4);
@@ -780,6 +826,7 @@
   function refresh(){ buildRadar(); setSat(); if (playing) setPlaying(true); load(active); }
   $('stamp').addEventListener('click', refresh);
   setInterval(refresh, 10 * 60000);
+  setInterval(() => { if (!document.hidden) render(); }, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - (D.ts || 0) > 5 * 60000) refresh(); });
 
   // ---------- boot ----------
