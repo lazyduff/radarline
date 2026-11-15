@@ -248,6 +248,13 @@
   body[data-skin=deco] #satBtn.on{background:#C9A24B;border-color:#C9A24B;color:#14161A}
   body[data-skin=deco] .leaflet-tile-pane{filter:sepia(.6) saturate(1.2) brightness(.95)}
   body[data-skin=deco] .leaflet-radar-pane{filter:grayscale(1) sepia(1) saturate(5) hue-rotate(5deg) brightness(1.2)}
+  /* Cloud layer tuned to each skin: dark clouds laid over light maps, pale clouds lifted off dark maps */
+  body[data-skin=braun] .leaflet-sat-pane, body[data-skin=bauhaus] .leaflet-sat-pane{mix-blend-mode:multiply;filter:grayscale(1) invert(1) contrast(1.35) brightness(1.15)}
+  body[data-skin=bauhaus] .leaflet-sat-pane{filter:grayscale(1) invert(1) contrast(1.8) brightness(1.2)}
+  body[data-skin=braun][data-bcol=walnut] .leaflet-sat-pane{filter:grayscale(1) invert(1) contrast(1.35) brightness(1.15) sepia(.35)}
+  body[data-skin=braun][data-bcol=graphite] .leaflet-sat-pane{mix-blend-mode:screen;filter:grayscale(1) contrast(1.3) brightness(.85)}
+  body[data-skin=woodblock] .leaflet-sat-pane{mix-blend-mode:screen;filter:grayscale(1) contrast(1.4) brightness(.85) sepia(.35)}
+  body[data-skin=deco] .leaflet-sat-pane{mix-blend-mode:screen;filter:grayscale(1) contrast(1.3) brightness(.8) sepia(.8) saturate(1.5)}
   body[data-skin=deco] .dials{display:flex;gap:12px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid #C9A24B;font-size:11.5px;letter-spacing:.06em;line-height:1.5}
   body[data-skin=deco] #top.compact .temp{font-size:58px}
   .dials svg.ar{width:132px;height:68px}
