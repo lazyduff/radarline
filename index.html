@@ -111,6 +111,13 @@
   .more label{display:flex;align-items:center;gap:5px;font-size:10.5px}
   .more input[type=range]{width:64px;accent-color:var(--ice)}
   .dials{display:none}
+  #cmp{padding:8px 4px 8px 8px;color:var(--dim);font-size:15px;align-self:flex-start}
+  #top.compact .src, #top.compact .days, #top.compact .daynote{display:none}
+  #top.compact{padding-bottom:6px}
+  #top.compact .now{margin-top:2px}
+  #top.compact .temp{font-size:46px}
+  #top.compact .unit{font-size:15px;margin-top:4px}
+  #top.compact .icon{font-size:28px}
 
   /* Braun skin: light, flat, one orange accent, tide clock and rain grille */
   body[data-skin=braun]{
@@ -143,6 +150,12 @@
   .grille{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin:6px 0 3px}
   .grille i{height:6px;border-radius:3px;background:#CFCCC4}
   .grille i.on{background:#111}
+  body[data-skin=braun] #top.compact .temp{font-size:54px}
+  body[data-skin=braun] #top.compact .dials{margin-top:4px;padding-top:6px;gap:10px}
+  #top.compact .dials svg{width:50px;height:50px}
+  #top.compact .dials .dt b{font-size:13px}
+  #top.compact .grille{margin:4px 0 2px}
+  #top.compact .grille i{height:5px}
 </style>
 </head>
 <body>
@@ -170,6 +183,7 @@
     <button class="unit" id="unit" aria-label="Switch units">°F</button>
     <div class="icon" id="icon"></div>
     <div class="cond" id="cond"></div>
+    <button id="cmp" aria-label="Show more or less">▾</button>
   </div>
   <div class="src" id="src"></div>
   <div class="dials" id="dials"></div>
@@ -247,6 +261,7 @@
   let saved = store.get('saved', []);
   let unit = store.get('unit', 'F');
   let skin = store.get('skin', 'classic');
+  let compact = store.get('compact', true);
   let theme = store.get('theme', 'dark');
   let dismissed = store.get('dismissed', []);
   let pin = null;       // temporary place picked by tapping the map
@@ -723,7 +738,9 @@
       }
     }
     const h = D.om.hourly, s = hourStart(); let dots = '', peak = 0;
-    for (let y = 4; y >= 1; y--) for (let i = s; i < s + 12; i++){ const pp = h.precipitation_probability[i] || 0; peak = Math.max(peak, pp); dots += '<i' + (Math.ceil(pp / 25) >= y ? ' class="on"' : '') + '></i>'; }
+    const shade = ['#CFCCC4', '#A3A19A', '#6F6E69', '#3A3A37', '#111'];
+    if (compact) for (let i = s; i < s + 12; i++){ const pp = h.precipitation_probability[i] || 0; peak = Math.max(peak, pp); dots += '<i style="background:' + shade[Math.min(4, Math.ceil(pp / 25))] + '"></i>'; }   // one row, darker = likelier
+    else for (let y = 4; y >= 1; y--) for (let i = s; i < s + 12; i++){ const pp = h.precipitation_probability[i] || 0; peak = Math.max(peak, pp); dots += '<i' + (Math.ceil(pp / 25) >= y ? ' class="on"' : '') + '></i>'; }
     box.innerHTML = clockSvg + '<div class="dt">' + tideTxt + '<div class="grille">' + dots + '</div><span>Rain chance, next 12 h' + (peak ? ', up to ' + peak + '%' : ': none') + '</span></div>';
   }
   function renderTides(){
@@ -867,6 +884,11 @@
     try{ if (window.RadarlineApp) window.RadarlineApp.setTheme(theme); }catch(e){}   // Android app: widgets follow this setting
     const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = skin === 'braun' ? '#EDEBE6' : theme === 'light' ? '#E8EEF3' : '#0B1220';
   }
+  function applyCompact(){
+    $('top').classList.toggle('compact', !!compact);
+    $('cmp').textContent = compact ? '▾' : '▴';
+  }
+  $('cmp').addEventListener('click', () => { compact = !compact; store.set('compact', compact); applyCompact(); render(); try{ recenter(); }catch(e){} });
   function applySkin(){
     document.body.dataset.skin = skin;
     $('skinBtn').textContent = 'Skin: ' + (skin === 'braun' ? 'Braun' : 'Classic');
@@ -891,7 +913,7 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - (D.ts || 0) > 5 * 60000) refresh(); });
 
   // ---------- boot ----------
-  applySkin(); applyTheme(); buildRadar(); select(active);
+  applyCompact(); applySkin(); applyTheme(); buildRadar(); select(active);
 })();
 </script>
 </body>
