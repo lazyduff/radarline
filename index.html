@@ -110,6 +110,39 @@
   .wi{width:1em;height:1em;display:inline-block;vertical-align:middle}
   .more label{display:flex;align-items:center;gap:5px;font-size:10.5px}
   .more input[type=range]{width:64px;accent-color:var(--ice)}
+  .dials{display:none}
+
+  /* Braun skin: light, flat, one orange accent, tide clock and rain grille */
+  body[data-skin=braun]{
+    --ink:#EDEBE6; --panel:#EDEBE6; --line:rgba(17,17,17,.3); --text:#111; --dim:#666; --ice:#E8571F; --amber:#E8571F; --chip:transparent;
+    --alert-bg:#E8571F; --alert-tx:#111; --cloud:#8A8A84; --sun:#E8571F;
+  }
+  body[data-skin=braun] .card{backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border:1px solid #111;border-radius:8px}
+  body[data-skin=braun] .chip{border:0;background:none;border-radius:0;padding:6px 8px}
+  body[data-skin=braun] .chip.on{background:none;color:#111;font-weight:500}
+  body[data-skin=braun] .chip.on::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:#E8571F;margin-right:5px}
+  body[data-skin=braun] .temp{font-size:84px;font-weight:400;letter-spacing:-.04em}
+  body[data-skin=braun] .icon{font-size:30px}
+  body[data-skin=braun] .days{border-top:1px solid #111}
+  body[data-skin=braun] .day.sel{background:none;outline:1px solid #111}
+  body[data-skin=braun] .day u, body[data-skin=braun] .hr u{color:#111}
+  body[data-skin=braun] .alert b{color:#111}
+  body[data-skin=braun] .links a{color:#111}
+  body[data-skin=braun] .more .open{color:#111}
+  body[data-skin=braun] .play{background:#F8F7F3;border-color:#111;color:#111}
+  body[data-skin=braun] .track-line{background:#111;height:1px}
+  body[data-skin=braun] #satBtn.on{color:#111}
+  body[data-skin=braun] #body{border-top:1px solid #111}
+  body[data-skin=braun] .leaflet-tile-pane{filter:grayscale(1) contrast(1.06)}
+  body[data-skin=braun] .leaflet-radar-pane{filter:grayscale(1) sepia(1) saturate(7) hue-rotate(-22deg)}
+  body[data-skin=braun] .dials{display:flex;gap:12px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid #111}
+  .dials svg{width:84px;height:84px;flex:none}
+  .dials .dt{flex:1;min-width:0;font-size:12px;line-height:1.4}
+  .dials .dt b{display:block;font-weight:400;font-size:15px}
+  .dials .dt span{color:var(--dim);font-size:11px}
+  .grille{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin:6px 0 3px}
+  .grille i{height:6px;border-radius:3px;background:#CFCCC4}
+  .grille i.on{background:#111}
 </style>
 </head>
 <body>
@@ -125,6 +158,7 @@
     <div class="tools">
       <button id="hereBtn">Use my location</button>
       <button id="themeBtn">Light / dark</button>
+      <button id="skinBtn">Skin: Classic</button>
     </div>
     <div class="hd">Synoptic token (optional, adds neighborhood stations)</div>
     <input id="synTok" type="text" placeholder="Paste token, stays on this device only" autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -138,6 +172,7 @@
     <div class="cond" id="cond"></div>
   </div>
   <div class="src" id="src"></div>
+  <div class="dials" id="dials"></div>
   <div class="days" id="days"></div>
   <div class="daynote" id="daynote"></div>
 </div>
@@ -211,6 +246,7 @@
   };
   let saved = store.get('saved', []);
   let unit = store.get('unit', 'F');
+  let skin = store.get('skin', 'classic');
   let theme = store.get('theme', 'dark');
   let dismissed = store.get('dismissed', []);
   let pin = null;       // temporary place picked by tapping the map
@@ -280,7 +316,7 @@
   function setBase(){
     if (base) map.removeLayer(base);
     if (labels) map.removeLayer(labels);
-    const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_' + (theme === 'light' ? 'Light' : 'Dark') + '_Gray_';
+    const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_' + (theme === 'light' || skin === 'braun' ? 'Light' : 'Dark') + '_Gray_';
     base = L.tileLayer(esri + 'Base/MapServer/tile/{z}/{y}/{x}', {maxZoom:13}).addTo(map);
     base.bringToBack();
     labels = L.tileLayer(esri + 'Reference/MapServer/tile/{z}/{y}/{x}', {maxZoom:13, pane:'labels'}).addTo(map);
@@ -323,7 +359,7 @@
     $('satBtn').classList.toggle('on', satOn);
     map.getPane('sat').style.mixBlendMode = theme === 'light' ? 'normal' : 'screen';
     if (satOn) sat = L.tileLayer('https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/goes_west_conus_ch13/{z}/{x}/{y}.png?_=' + Math.floor(Date.now() / 300000),
-      {pane:'sat', opacity: theme === 'light' ? 0.5 : 0.8, maxZoom:13, maxNativeZoom:8}).addTo(map);
+      {pane:'sat', opacity: theme === 'light' || skin === 'braun' ? 0.5 : 0.8, maxZoom:13, maxNativeZoom:8}).addTo(map);
   }
   $('satBtn').addEventListener('click', () => { satOn = !satOn; store.set('sat', satOn); setSat(); });
   $('playBtn').addEventListener('click', () => setPlaying(!playing));
@@ -577,7 +613,7 @@
       else if (D.obs) s += ' · ' + esc(D.obs.id) + ' measured ' + T(D.obs.tempF) + '°, ' + D.obs.mi.toFixed(0) + ' mi away, ' + ago(new Date(D.obs.time));
       $('src').innerHTML = s;
     } else { $('temp').textContent = '--'; $('icon').textContent = ''; $('cond').textContent = 'Loading'; $('src').textContent = ''; }
-    renderDays(); renderHours(); renderNear(); renderPier(); renderSea(); renderFires(); renderTides(); renderDetails(); renderText();
+    renderDays(); renderHours(); renderNear(); renderPier(); renderSea(); renderFires(); renderTides(); renderDetails(); renderText(); renderDials();
     $('stamp').textContent = D.ts ? 'Data ' + clock(new Date(D.ts)) + ' ↻' : 'Loading';
   }
   function renderChips(){
@@ -665,6 +701,30 @@
       if (t >= a.t && t <= b.t) return a.v + (b.v - a.v) * (1 - Math.cos(Math.PI * (t - a.t) / (b.t - a.t))) / 2;
     }
     return null;
+  }
+  // Braun skin: tide clock (hand at 12 = high water, 6 = low) and a dot grille of rain chance for the next 12 hours.
+  function renderDials(){
+    const box = $('dials');
+    if (skin !== 'braun' || !D.om){ box.innerHTML = ''; return; }
+    let clockSvg = '', tideTxt = '';
+    const td = D.tides, now = Date.now();
+    if (td){
+      const nx = td.ev.find(e => e.t > now), pv = td.ev.filter(e => e.t <= now).pop();
+      if (nx && pv){
+        const f = (now - pv.t) / (nx.t - pv.t), ang = (nx.hi ? 180 + f * 180 : f * 180) * Math.PI / 180;
+        let ticks = '';
+        for (let i = 0; i < 24; i++){ const a = i / 24 * 2 * Math.PI, r = i % 6 ? 41 : 36;
+          ticks += '<line x1="' + (48 + Math.sin(a) * r).toFixed(1) + '" y1="' + (48 - Math.cos(a) * r).toFixed(1) + '" x2="' + (48 + Math.sin(a) * 45).toFixed(1) + '" y2="' + (48 - Math.cos(a) * 45).toFixed(1) + '"/>'; }
+        clockSvg = '<svg viewBox="0 0 96 96" role="img" aria-label="Tide clock"><circle cx="48" cy="48" r="46" fill="#F8F7F3" stroke="#111"/><g stroke="#111">' + ticks +
+          '</g><text x="48" y="25" text-anchor="middle" font-size="11" fill="#111">high</text><text x="48" y="80" text-anchor="middle" font-size="11" fill="#111">low</text>' +
+          '<line x1="48" y1="48" x2="' + (48 + Math.sin(ang) * 30).toFixed(1) + '" y2="' + (48 - Math.cos(ang) * 30).toFixed(1) + '" stroke="#111" stroke-width="3" stroke-linecap="round"/><circle cx="48" cy="48" r="5" fill="#E8571F"/></svg>';
+        const mins = Math.round((nx.t - now) / 60000), left = mins >= 60 ? Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min' : mins + ' min';
+        tideTxt = '<span>Tide ' + (nx.hi ? 'rising, high' : 'falling, low') + ' in ' + left + '</span><b>' + nx.v.toFixed(1) + ' ft at ' + clock(new Date(nx.t)) + '</b>';
+      }
+    }
+    const h = D.om.hourly, s = hourStart(); let dots = '', peak = 0;
+    for (let y = 4; y >= 1; y--) for (let i = s; i < s + 12; i++){ const pp = h.precipitation_probability[i] || 0; peak = Math.max(peak, pp); dots += '<i' + (Math.ceil(pp / 25) >= y ? ' class="on"' : '') + '></i>'; }
+    box.innerHTML = clockSvg + '<div class="dt">' + tideTxt + '<div class="grille">' + dots + '</div><span>Rain chance, next 12 h' + (peak ? ', up to ' + peak + '%' : ': none') + '</span></div>';
   }
   function renderTides(){
     const td = D.tides;
@@ -805,8 +865,13 @@
   function applyTheme(){
     document.body.dataset.theme = theme; setBase(); setSat();
     try{ if (window.RadarlineApp) window.RadarlineApp.setTheme(theme); }catch(e){}   // Android app: widgets follow this setting
-    const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = theme === 'light' ? '#E8EEF3' : '#0B1220';
+    const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = skin === 'braun' ? '#EDEBE6' : theme === 'light' ? '#E8EEF3' : '#0B1220';
   }
+  function applySkin(){
+    document.body.dataset.skin = skin;
+    $('skinBtn').textContent = 'Skin: ' + (skin === 'braun' ? 'Braun' : 'Classic');
+  }
+  $('skinBtn').addEventListener('click', () => { skin = skin === 'braun' ? 'classic' : 'braun'; store.set('skin', skin); applySkin(); applyTheme(); render(); });
   $('themeBtn').addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; store.set('theme', theme); applyTheme(); });
   $('unit').addEventListener('click', () => { unit = unit === 'F' ? 'C' : 'F'; store.set('unit', unit); render(); });
   $('days').addEventListener('click', e => {
@@ -826,7 +891,7 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - (D.ts || 0) > 5 * 60000) refresh(); });
 
   // ---------- boot ----------
-  applyTheme(); buildRadar(); select(active);
+  applySkin(); applyTheme(); buildRadar(); select(active);
 })();
 </script>
 </body>
