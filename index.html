@@ -106,8 +106,7 @@
   .leaflet-control-zoom{display:none}
   #satBtn{position:absolute;right:0;top:-44px;padding:8px 12px;border-radius:999px;font-size:12.5px;color:var(--dim)}
   #satBtn.on{color:var(--ink);background:var(--ice);border-color:var(--ice);font-weight:600}
-  #sheet.exp #satBtn,#sheet.exp #locBtn{display:none}
-  #locBtn{position:absolute;left:0;top:-44px;padding:8px 12px;border-radius:999px;font-size:12.5px;color:var(--dim)}
+  #sheet.exp #satBtn{display:none}
   .wi{width:1em;height:1em;display:inline-block;vertical-align:middle}
   .more label{display:flex;align-items:center;gap:5px;font-size:10.5px}
   .more input[type=range]{width:64px;accent-color:var(--ice)}
@@ -145,7 +144,6 @@
 
 <div id="sheet" class="card">
   <button id="satBtn" class="card">Clouds</button>
-  <button id="locBtn" class="card">Locate me</button>
   <div class="bar-top">
     <button class="play" id="playBtn" aria-label="Play or pause radar"><svg id="playIcon" viewBox="0 0 16 16"><path d="M4 2l10 6-10 6z"/></svg></button>
     <div class="track" id="track"><div class="track-line"></div><div class="track-past" id="trackPast"></div><div class="knob" id="knob"></div></div>
@@ -743,20 +741,6 @@
     if (b.dataset.id === 'save' && pin){ const q = pin; pin = null; addPlace(q.name, q.lat, q.lon); return; }
     const l = locs().find(x => x.id === b.dataset.id); if (l){ $('manage').classList.remove('open'); select(l); }
   });
-  // Show weather for wherever the phone is right now, and center the map there
-  $('locBtn').addEventListener('click', () => {
-    const b = $('locBtn'), fail = () => { b.textContent = 'Location off'; setTimeout(() => { b.textContent = 'Locate me'; }, 3000); };
-    if (!navigator.geolocation) return fail();
-    b.textContent = 'Locating';
-    navigator.geolocation.getCurrentPosition(p => {
-      b.textContent = 'Locate me';
-      pin = {id:'pin', name:'My location', lat:+p.coords.latitude.toFixed(4), lon:+p.coords.longitude.toFixed(4), temp:true};
-      $('manage').classList.remove('open');
-      if (map.getZoom() < 9) map.setZoom(9, {animate:false});
-      select(pin);
-      setTimeout(recenter, 60);
-    }, fail, {timeout:12000, enableHighAccuracy:true, maximumAge:60000});
-  });
   map.on('click', async e => {
     const lat = +e.latlng.lat.toFixed(4), lon = +e.latlng.lng.toFixed(4);
     pin = {id:'pin', name:'Pin', lat, lon, temp:true};
@@ -803,9 +787,19 @@
   $('synTok').addEventListener('change', e => { store.set('synTok', e.target.value.trim()); load(active); });
   $('anKey').value = (store.get('anKey', '') || BAKED.anKey);
   $('anKey').addEventListener('change', e => { store.set('anKey', e.target.value.trim()); load(active); });
+  // Show weather for wherever the phone is right now, and center the map there
   $('hereBtn').addEventListener('click', () => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(p => addPlace('My location', p.coords.latitude, p.coords.longitude), () => {}, {timeout:8000});
+    const b = $('hereBtn'), fail = () => { b.textContent = 'Location off'; setTimeout(() => { b.textContent = 'Use my location'; }, 3000); };
+    if (!navigator.geolocation) return fail();
+    b.textContent = 'Locating';
+    navigator.geolocation.getCurrentPosition(p => {
+      b.textContent = 'Use my location';
+      pin = {id:'pin', name:'My location', lat:+p.coords.latitude.toFixed(4), lon:+p.coords.longitude.toFixed(4), temp:true};
+      $('manage').classList.remove('open');
+      if (map.getZoom() < 9) map.setZoom(9, {animate:false});
+      select(pin);
+      setTimeout(recenter, 60);
+    }, fail, {timeout:12000, enableHighAccuracy:true, maximumAge:60000});
   });
   function applyTheme(){
     document.body.dataset.theme = theme; setBase(); setSat();
