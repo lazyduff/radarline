@@ -194,7 +194,7 @@
   body[data-skin=bauhaus] #satBtn{border-radius:0;color:#111;text-transform:lowercase}
   body[data-skin=bauhaus] #satBtn.on{background:#1D4E89;border-color:#111;color:#fff}
   body[data-skin=bauhaus] #body{border-top:3px solid #111}
-  body[data-skin=bauhaus] .leaflet-tile-pane{filter:grayscale(1) contrast(1.5) brightness(1.04)}
+  body[data-skin=bauhaus] .leaflet-tile-pane{filter:grayscale(1) brightness(.56) contrast(5) brightness(1.4)}
   body[data-skin=bauhaus] .leaflet-radar-pane{filter:grayscale(1) sepia(1) saturate(8) hue-rotate(170deg)}
   body[data-skin=bauhaus] .dials{display:flex;margin-top:8px;padding-top:8px;border-top:3px solid #111;text-align:center;font-size:12px;line-height:1.35;text-transform:lowercase}
   body[data-skin=bauhaus] #top.compact .temp{font-size:60px}
@@ -220,7 +220,7 @@
   body[data-skin=woodblock] #satBtn{border-radius:4px;color:#1F3A5F}
   body[data-skin=woodblock] #satBtn.on{background:#C8402F;border-color:#1F3A5F;color:#EFE7D6}
   body[data-skin=woodblock] .leaflet-tile-pane{filter:grayscale(1) sepia(1) hue-rotate(175deg) saturate(1.8) brightness(1.5)}
-  body[data-skin=woodblock] .leaflet-radar-pane{filter:grayscale(1) brightness(2.2) sepia(.3)}
+  body[data-skin=woodblock] .leaflet-radar-pane{filter:grayscale(1) sepia(1) saturate(9) hue-rotate(-38deg) brightness(1.05)}
   body[data-skin=woodblock] .dials{display:block;margin:8px -12px 0;font-size:12px}
   body[data-skin=woodblock] #top.compact .temp{font-size:58px}
   .dials svg.wv{width:100%;height:58px;display:block}
@@ -710,10 +710,16 @@
     if (t.includes('clear') || t.includes('fair') || t.includes('sunny')) return 0;
     return null;
   }
+  let lastChip = null;
   function render(){
     const keep = ['chips', 'days', 'hours'].map(id => $(id).scrollLeft);
     renderAll();
     ['chips', 'days', 'hours'].forEach((id, i) => { $(id).scrollLeft = keep[i]; });
+    if (active.id !== lastChip){   // new place picked: slide the row so its name is in view
+      lastChip = active.id;
+      const box = $('chips'), on = box.querySelector('.on');
+      if (on) box.scrollLeft = Math.max(0, on.getBoundingClientRect().left - box.getBoundingClientRect().left + box.scrollLeft - (box.clientWidth - on.offsetWidth) / 2);
+    }
   }
   function renderAll(){
     renderChips(); renderAlert();
@@ -790,7 +796,7 @@
     const pierName = D.pier ? D.pier.station.name.toLowerCase() : null;
     $('nearWrap').innerHTML = '<div class="hd">Nearby stations, measured (Synoptic)</div>' + y.list.filter(s => !pierName || String(s.name).toLowerCase() !== pierName).map(s =>
       '<div class="tl">' + T(s.tempF) + '° ' + (s.mph != null ? esc(s.dir) + ' ' + Math.round(s.mph) + (s.gust ? ' g' + Math.round(s.gust) : '') + ' mph' : '') +
-      '<span>' + esc(s.name).slice(0, 26) + ' · ' + s.mi.toFixed(1) + ' mi · ' + ago(new Date(s.time)) + '</span></div>').join('');
+      '<span>' + esc(String(s.name).slice(0, 20).trim()) + ' · ' + s.mi.toFixed(1) + ' mi · ' + ago(new Date(s.time)) + '</span></div>').join('');
   }
   function renderPier(){
     const p = D.pier;
@@ -839,12 +845,14 @@
     const lvl = ti ? ti.level : rp / 100, y = (3 + 24 * (1 - lvl)).toFixed(1);
     const sg = (svg, a, b) => '<div class="sg"><svg viewBox="0 0 30 30" aria-hidden="true">' + svg + '</svg><div>' + a + '<span>' + b + '</span></div></div>';
     return sg('<polygon points="1,28 29,28 15,3" fill="#F2B705"/>', 'peak ' + T(pk) + '°', pi === s ? 'now' : hourLbl(new Date(h.time[pi]))) +
-      sg('<rect x="5" y="5" width="20" height="20" fill="#D62828" transform="rotate(' + Math.round(c.wind_direction_10m) + ' 15 15)"/>', compass(c.wind_direction_10m) + ' ' + Math.round(c.wind_speed_10m), 'gust ' + Math.round(h.wind_gusts_10m[s] || 0)) +
+      sg('<rect x="5" y="5" width="20" height="20" fill="#D62828" transform="rotate(' + Math.round(c.wind_direction_10m) + ' 15 15)"/>', compass(c.wind_direction_10m) + ' ' + Math.round(c.wind_speed_10m), 'gust ' + Math.round(Math.max(c.wind_speed_10m, c.wind_gusts_10m != null ? c.wind_gusts_10m : (h.wind_gusts_10m[s] || 0)))) +
       sg('<clipPath id="bhc"><rect x="0" y="' + y + '" width="30" height="30"/></clipPath><circle cx="15" cy="15" r="12" fill="#1D4E89" clip-path="url(#bhc)"/><circle cx="15" cy="15" r="12" fill="none" stroke="#1D4E89" stroke-width="2"/>',
         ti ? (ti.nx.hi ? 'high ' : 'low ') + ti.at : 'rain ' + rp + '%', ti ? ti.nx.v.toFixed(1) + ' ft' : 'next 12 h');
   }
   function dialsWood(){
-    const ti = tideInfo(), rp = rainPeak(), lvl = ti ? ti.level : 0.3, y = Math.round(40 - lvl * 26);
+    const ti = tideInfo(), rp = rainPeak();
+    if (!ti) return '<div class="wt">rain ' + (rp ? 'up to ' + rp + '%' : 'none') + ' in 12 h · no tide station near here</div>';   // waves only when they show real water
+    const lvl = ti.level, y = Math.round(40 - lvl * 26);
     const wave = (y0, a) => 'M0,' + y0 + ' Q25,' + (y0 - a) + ' 50,' + y0 + ' T100,' + y0 + ' T150,' + y0 + ' T200,' + y0 + ' T250,' + y0 + ' T300,' + y0 + ' V60 H0 Z';
     return '<svg class="wv" viewBox="0 0 300 60" preserveAspectRatio="none" role="img" aria-label="Tide shown as waves against a marked post">' +
       '<path d="M0,26 C40,10 70,20 110,14 S190,24 230,10 S280,18 300,14 V60 H0 Z" fill="#B8BFA9"/><rect x="262" y="2" width="8" height="58" fill="#6B4A32"/>' +
