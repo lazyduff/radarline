@@ -777,7 +777,8 @@
         items.forEach(it => {
           const parts = it.display_name.split(',').map(s => s.trim()), b = document.createElement('button');
           b.className = 'row'; b.textContent = parts.slice(0, 3).join(', ');
-          b.onclick = () => addPlace(parts[0], parseFloat(it.lat), parseFloat(it.lon));
+          const label = parts.find(x => !/^\d+[A-Za-z]?$/.test(x)) || parts[0];   // skip a bare street number
+          b.onclick = () => addPlace(label, parseFloat(it.lat), parseFloat(it.lon));
           $('results').appendChild(b);
         });
       }catch(e){}
