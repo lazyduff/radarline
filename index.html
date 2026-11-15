@@ -174,6 +174,85 @@
   #top.compact .dials .dt b{font-size:13px;display:inline}
   #top.compact .dials .dt b::before{content:' · '}
   #top.compact .grille{margin:4px 0 2px}
+  /* Bauhaus skin: number leads, black rules, triangle = heat, square = wind, circle = water */
+  body[data-skin=bauhaus]{--ink:#F2EDE1; --panel:#F2EDE1; --line:#111; --text:#111; --dim:#5A574F; --ice:#1D4E89; --amber:#D62828; --chip:transparent; --alert-bg:#D62828; --alert-tx:#fff; --cloud:#111; --sun:#F2B705}
+  body[data-skin=bauhaus] .card{backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border:3px solid #111;border-radius:0}
+  body[data-skin=bauhaus] .chip{border:0;background:none;border-radius:0;padding:4px 1px;margin-right:10px;text-transform:lowercase;border-bottom:3px solid transparent}
+  body[data-skin=bauhaus] .chip.on{background:none;color:#111;font-weight:500;border-bottom-color:#111}
+  body[data-skin=bauhaus] .temp{font-size:88px;font-weight:500;letter-spacing:-.04em}
+  body[data-skin=bauhaus] .cond, body[data-skin=bauhaus] .hd, body[data-skin=bauhaus] .more, body[data-skin=bauhaus] .tools button{text-transform:lowercase}
+  body[data-skin=bauhaus] .hd{letter-spacing:0;font-size:11.5px}
+  body[data-skin=bauhaus] .days{border-top:3px solid #111}
+  body[data-skin=bauhaus] .day.sel{background:none;outline:2px solid #111}
+  body[data-skin=bauhaus] .alert{border-radius:0}
+  body[data-skin=bauhaus] .alert b{color:#F2B705}
+  body[data-skin=bauhaus] .links a, body[data-skin=bauhaus] .more .open{color:#111}
+  body[data-skin=bauhaus] .play{border:0;border-radius:0;background:#111;color:#F2EDE1}
+  body[data-skin=bauhaus] .track-line{background:#111;height:3px}
+  body[data-skin=bauhaus] .track-past{background:#D62828;height:3px}
+  body[data-skin=bauhaus] .knob{border-radius:0;background:#D62828}
+  body[data-skin=bauhaus] #satBtn{border-radius:0;color:#111;text-transform:lowercase}
+  body[data-skin=bauhaus] #satBtn.on{background:#1D4E89;border-color:#111;color:#fff}
+  body[data-skin=bauhaus] #body{border-top:3px solid #111}
+  body[data-skin=bauhaus] .leaflet-tile-pane{filter:grayscale(1) contrast(1.5) brightness(1.04)}
+  body[data-skin=bauhaus] .leaflet-radar-pane{filter:grayscale(1) sepia(1) saturate(8) hue-rotate(170deg)}
+  body[data-skin=bauhaus] .dials{display:flex;margin-top:8px;padding-top:8px;border-top:3px solid #111;text-align:center;font-size:12px;line-height:1.35;text-transform:lowercase}
+  body[data-skin=bauhaus] #top.compact .temp{font-size:60px}
+  .dials .sg{flex:1;min-width:0}
+  .dials .sg svg{width:30px;height:30px;display:block;margin:0 auto 3px}
+  .dials .sg span{color:var(--dim);display:block}
+  #top.compact .dials .sg{display:flex;align-items:center;gap:6px;text-align:left;font-size:11.5px}
+  #top.compact .dials .sg svg{width:22px;height:22px;margin:0;flex:none}
+
+  /* Woodblock skin: paper, indigo, one red seal. Wave height follows the tide. */
+  body[data-skin=woodblock]{--ink:#1F3A5F; --panel:#EFE7D6; --line:rgba(31,58,95,.4); --text:#1F3A5F; --dim:#5C7090; --ice:#4F7498; --amber:#C8402F; --chip:transparent; --alert-bg:#C8402F; --alert-tx:#EFE7D6; --cloud:#7F97B0; --sun:#C8402F}
+  body[data-skin=woodblock] .card{backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border:1px solid #1F3A5F;border-radius:4px}
+  body[data-skin=woodblock] #top{border-top:10px solid #C9BFA6}
+  body[data-skin=woodblock] .chip{border:0;background:none;border-radius:0;padding:4px 9px}
+  body[data-skin=woodblock] .chip.on{background:#C8402F;color:#EFE7D6;font-weight:400;letter-spacing:.06em}
+  body[data-skin=woodblock] .temp{font-size:82px;font-weight:300}
+  body[data-skin=woodblock] .alert{border-radius:2px}
+  body[data-skin=woodblock] .alert b{color:#F3D9A0}
+  body[data-skin=woodblock] .links a, body[data-skin=woodblock] .more .open{color:#1F3A5F}
+  body[data-skin=woodblock] .play{border:0;border-radius:4px;background:#C8402F;color:#EFE7D6}
+  body[data-skin=woodblock] .track-line{background:#1F3A5F}
+  body[data-skin=woodblock] .track-past, body[data-skin=woodblock] .knob{background:#C8402F}
+  body[data-skin=woodblock] #satBtn{border-radius:4px;color:#1F3A5F}
+  body[data-skin=woodblock] #satBtn.on{background:#C8402F;border-color:#1F3A5F;color:#EFE7D6}
+  body[data-skin=woodblock] .leaflet-tile-pane{filter:grayscale(1) sepia(1) hue-rotate(175deg) saturate(1.8) brightness(1.5)}
+  body[data-skin=woodblock] .leaflet-radar-pane{filter:grayscale(1) brightness(2.2) sepia(.3)}
+  body[data-skin=woodblock] .dials{display:block;margin:8px -12px 0;font-size:12px}
+  body[data-skin=woodblock] #top.compact .temp{font-size:58px}
+  .dials svg.wv{width:100%;height:58px;display:block}
+  #top.compact .dials svg.wv{width:100%;height:38px}
+  .dials .wt{padding:5px 12px 0;line-height:1.5}
+  .dials .seal{background:#C8402F;color:#EFE7D6;padding:1px 6px;margin-right:6px}
+
+  /* Deco skin: black and gold, stepped double frame, the sun rides an arch from sunrise to sunset */
+  body[data-skin=deco]{--ink:#14161A; --panel:#14161A; --line:rgba(201,162,75,.55); --text:#EDE3C8; --dim:#C9A24B; --ice:#F0CF7A; --amber:#F0CF7A; --chip:transparent; --alert-bg:#C9A24B; --alert-tx:#14161A; --cloud:#8C8672; --sun:#F0CF7A}
+  body[data-skin=deco] .card{backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border:1px solid #C9A24B;border-radius:0;outline:1px solid rgba(201,162,75,.45);outline-offset:3px}
+  body[data-skin=deco] .chip{border:0;background:none;border-radius:0;padding:6px 6px;letter-spacing:.12em;font-size:11.5px;color:#C9A24B}
+  body[data-skin=deco] .chip.on{background:none;color:#EDE3C8;font-weight:400}
+  body[data-skin=deco] .chip.on::before{content:'◆ ';color:#F0CF7A}
+  body[data-skin=deco] .temp{font-size:82px;font-weight:300}
+  body[data-skin=deco] .cond{letter-spacing:.04em}
+  body[data-skin=deco] .hd{letter-spacing:.14em}
+  body[data-skin=deco] .days{border-top:1px solid #C9A24B}
+  body[data-skin=deco] .alert{border-radius:0;letter-spacing:.03em}
+  body[data-skin=deco] .alert b{color:#14161A}
+  body[data-skin=deco] .play{width:32px;height:32px;margin:3px;border-radius:0;border-color:#C9A24B;background:none;color:#F0CF7A;transform:rotate(45deg)}
+  body[data-skin=deco] .play svg{transform:rotate(-45deg)}
+  body[data-skin=deco] .track-line{background:#8C7333}
+  body[data-skin=deco] .knob{border-radius:0;transform:rotate(45deg);width:12px;height:12px;top:8px;margin-left:-6px}
+  body[data-skin=deco] #satBtn{border-radius:0;color:#C9A24B;letter-spacing:.1em}
+  body[data-skin=deco] #satBtn.on{background:#C9A24B;border-color:#C9A24B;color:#14161A}
+  body[data-skin=deco] .leaflet-tile-pane{filter:sepia(.6) saturate(1.2) brightness(.95)}
+  body[data-skin=deco] .leaflet-radar-pane{filter:grayscale(1) sepia(1) saturate(5) hue-rotate(5deg) brightness(1.2)}
+  body[data-skin=deco] .dials{display:flex;gap:12px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid #C9A24B;font-size:11.5px;letter-spacing:.06em;line-height:1.5}
+  body[data-skin=deco] #top.compact .temp{font-size:58px}
+  .dials svg.ar{width:132px;height:68px}
+  #top.compact .dials svg.ar{width:92px;height:48px}
+  .dials .at b{display:block;font-weight:400;color:#F0CF7A}
   #colBtn{display:none}
   body[data-skin=braun] #colBtn{display:inline-block}
 </style>
@@ -285,7 +364,10 @@
   let compact = store.get('compact', true);
   const BCOLS = ['stone', 'graphite', 'white', 'walnut'], BMETA = {stone:'#ECE9E2', graphite:'#1E1E1C', white:'#FAFAF8', walnut:'#E6DFD0'};
   let bcol = store.get('bcol', 'stone'); if (!BCOLS.includes(bcol)) bcol = 'stone';
-  const lightMap = () => skin === 'braun' ? bcol !== 'graphite' : theme === 'light';
+  const SKINS = ['classic', 'braun', 'bauhaus', 'woodblock', 'deco'], SKIN_NAME = {classic:'Classic', braun:'Braun', bauhaus:'Bauhaus', woodblock:'Woodblock', deco:'Deco'};
+  if (!SKINS.includes(skin)) skin = 'classic';
+  const lightMap = () => skin === 'braun' ? bcol !== 'graphite' : skin === 'bauhaus' ? true : skin === 'woodblock' || skin === 'deco' ? false : theme === 'light';
+  const skinMeta = () => skin === 'braun' ? BMETA[bcol] : skin === 'bauhaus' ? '#F2EDE1' : skin === 'woodblock' ? '#1F3A5F' : skin === 'deco' ? '#14161A' : theme === 'light' ? '#E8EEF3' : '#0B1220';
   let theme = store.get('theme', 'dark');
   let dismissed = store.get('dismissed', []);
   let pin = null;       // temporary place picked by tapping the map
@@ -741,10 +823,54 @@
     }
     return null;
   }
+  // Shared readings for the skin panels: where the tide is between its last and next turn, and the rain peak for the next 12 hours.
+  function tideInfo(){
+    const td = D.tides, now = Date.now(); if (!td) return null;
+    const nx = td.ev.find(e => e.t > now), pv = td.ev.filter(e => e.t <= now).pop(); if (!nx || !pv) return null;
+    const f = (now - pv.t) / (nx.t - pv.t), v = tideAt(td.ev, now), lo = Math.min(pv.v, nx.v), hi = Math.max(pv.v, nx.v);
+    const mins = Math.round((nx.t - now) / 60000);
+    return {nx, v, level: v == null ? (nx.hi ? f : 1 - f) : Math.max(0, Math.min(1, (v - lo) / (hi - lo || 1))),
+      left: mins >= 60 ? Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min' : mins + ' min', at: clock(new Date(nx.t))};
+  }
+  function rainPeak(){ const h = D.om.hourly, s = hourStart(); let p = 0; for (let i = s; i < s + 12; i++) p = Math.max(p, h.precipitation_probability[i] || 0); return p; }
+  function dialsBauhaus(){
+    const h = D.om.hourly, s = hourStart(), c = D.om.current, ti = tideInfo(), rp = rainPeak();
+    let pk = -999, pi = s; for (let i = s; i < s + 12; i++) if (h.temperature_2m[i] > pk){ pk = h.temperature_2m[i]; pi = i; }
+    const lvl = ti ? ti.level : rp / 100, y = (3 + 24 * (1 - lvl)).toFixed(1);
+    const sg = (svg, a, b) => '<div class="sg"><svg viewBox="0 0 30 30" aria-hidden="true">' + svg + '</svg><div>' + a + '<span>' + b + '</span></div></div>';
+    return sg('<polygon points="1,28 29,28 15,3" fill="#F2B705"/>', 'peak ' + T(pk) + '°', pi === s ? 'now' : hourLbl(new Date(h.time[pi]))) +
+      sg('<rect x="5" y="5" width="20" height="20" fill="#D62828" transform="rotate(' + Math.round(c.wind_direction_10m) + ' 15 15)"/>', compass(c.wind_direction_10m) + ' ' + Math.round(c.wind_speed_10m), 'gust ' + Math.round(h.wind_gusts_10m[s] || 0)) +
+      sg('<clipPath id="bhc"><rect x="0" y="' + y + '" width="30" height="30"/></clipPath><circle cx="15" cy="15" r="12" fill="#1D4E89" clip-path="url(#bhc)"/><circle cx="15" cy="15" r="12" fill="none" stroke="#1D4E89" stroke-width="2"/>',
+        ti ? (ti.nx.hi ? 'high ' : 'low ') + ti.at : 'rain ' + rp + '%', ti ? ti.nx.v.toFixed(1) + ' ft' : 'next 12 h');
+  }
+  function dialsWood(){
+    const ti = tideInfo(), rp = rainPeak(), lvl = ti ? ti.level : 0.3, y = Math.round(40 - lvl * 26);
+    const wave = (y0, a) => 'M0,' + y0 + ' Q25,' + (y0 - a) + ' 50,' + y0 + ' T100,' + y0 + ' T150,' + y0 + ' T200,' + y0 + ' T250,' + y0 + ' T300,' + y0 + ' V60 H0 Z';
+    return '<svg class="wv" viewBox="0 0 300 60" preserveAspectRatio="none" role="img" aria-label="Tide shown as waves against a marked post">' +
+      '<path d="M0,26 C40,10 70,20 110,14 S190,24 230,10 S280,18 300,14 V60 H0 Z" fill="#B8BFA9"/><rect x="262" y="2" width="8" height="58" fill="#6B4A32"/>' +
+      '<path d="M262,12 h8 M262,22 h8 M262,32 h8 M262,42 h8" stroke="#EFE7D6" stroke-width="2"/><path d="' + wave(y, 12) + '" fill="#9DB4C8"/><path d="' + wave(y + 11, 12) + '" fill="#4F7498"/>' +
+      '<g fill="#EFE7D6"><circle cx="28" cy="' + (y + 5) + '" r="2.5"/><circle cx="128" cy="' + (y + 5) + '" r="2.5"/><circle cx="228" cy="' + (y + 5) + '" r="2.5"/></g></svg>' +
+      '<div class="wt">' + (ti ? '<span class="seal">' + (ti.nx.hi ? 'High' : 'Low') + ' tide ' + ti.at + '</span>' + (ti.nx.hi ? 'rising' : 'falling') + (ti.v != null ? ', ' + ti.v.toFixed(1) + ' ft now' : '') + ' · ' : '') +
+      'rain ' + (rp ? 'up to ' + rp + '%' : 'none') + ' in 12 h</div>';
+  }
+  function dialsDeco(){
+    const d = D.om.daily, now = Date.now(), ti = tideInfo(), rp = rainPeak();
+    const up = new Date(d.sunrise[0]).getTime(), dn = new Date(d.sunset[0]).getTime(), day = now > up && now < dn, f = day ? (now - up) / (dn - up) : 0;
+    let w = '';
+    for (let i = 0; i < 10; i++){ const a = Math.PI * (i + .12) / 10, b = Math.PI * (i + .88) / 10, R = i % 2 ? 56 : 66, lit = day && (i + 1) / 10 > f;
+      w += '<polygon fill="' + (lit ? '#F0CF7A' : i % 2 ? '#5A4A22' : '#6E5B2A') + '" points="70,66 ' + (70 - Math.cos(a) * R).toFixed(1) + ',' + (66 - Math.sin(a) * R).toFixed(1) + ' ' + (70 - Math.cos(b) * R).toFixed(1) + ',' + (66 - Math.sin(b) * R).toFixed(1) + '"/>'; }
+    const sa = Math.PI * f, sx = (70 - Math.cos(sa) * 46).toFixed(1), sy = (66 - Math.sin(sa) * 46).toFixed(1);
+    const mins = Math.round((dn - now) / 60000), nextUp = now >= dn && d.sunrise[1] ? new Date(d.sunrise[1]) : new Date(d.sunrise[0]);
+    return '<svg class="ar" viewBox="0 0 140 72" role="img" aria-label="Sun on its arch from sunrise to sunset">' + w + '<path d="M24,66 A46,46 0 0 1 116,66" fill="none" stroke="#14161A" stroke-width="2.5"/>' +
+      (day ? '<circle cx="' + sx + '" cy="' + sy + '" r="6" fill="#F0CF7A" stroke="#14161A" stroke-width="2"/>' : '<circle cx="70" cy="30" r="6" fill="none" stroke="#EDE3C8" stroke-width="1.5"/>') +
+      '<path d="M0,66 H140 M0,70 H140" stroke="#C9A24B"/></svg><div class="at"><b>' + (day ? Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min of sun' : 'Sun up ' + clock(nextUp)) + '</b>' +
+      (ti ? 'Tide ' + (ti.nx.hi ? 'high ' : 'low ') + ti.at + ' · ' + ti.nx.v.toFixed(1) + ' ft<br>' : '') + 'Rain ' + (rp ? 'up to ' + rp + '%' : 'none') + ', 12 h</div>';
+  }
   // Braun skin: tide clock (hand at 12 = high water, 6 = low) and a dot grille of rain chance for the next 12 hours.
   function renderDials(){
     const box = $('dials');
-    if (skin !== 'braun' || !D.om){ box.innerHTML = ''; return; }
+    if (skin === 'classic' || !D.om){ box.innerHTML = ''; return; }
+    if (skin !== 'braun'){ box.innerHTML = skin === 'bauhaus' ? dialsBauhaus() : skin === 'woodblock' ? dialsWood() : dialsDeco(); return; }
     let clockSvg = '', tideTxt = '';
     const td = D.tides, now = Date.now();
     if (td){
@@ -906,7 +1032,7 @@
   function applyTheme(){
     document.body.dataset.theme = theme; setBase(); setSat();
     try{ if (window.RadarlineApp) window.RadarlineApp.setTheme(theme); }catch(e){}   // Android app: widgets follow this setting
-    const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = skin === 'braun' ? BMETA[bcol] : theme === 'light' ? '#E8EEF3' : '#0B1220';
+    const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = skinMeta();
   }
   function applyCompact(){
     $('top').classList.toggle('compact', !!compact);
@@ -915,12 +1041,12 @@
   $('cmp').addEventListener('click', () => { compact = !compact; store.set('compact', compact); applyCompact(); render(); try{ recenter(); }catch(e){} });
   function applySkin(){
     document.body.dataset.skin = skin;
-    $('skinBtn').textContent = 'Skin: ' + (skin === 'braun' ? 'Braun' : 'Classic');
+    $('skinBtn').textContent = 'Skin: ' + SKIN_NAME[skin];
     document.body.dataset.bcol = bcol;
     $('colBtn').textContent = 'Color: ' + bcol[0].toUpperCase() + bcol.slice(1);
   }
   $('colBtn').addEventListener('click', () => { bcol = BCOLS[(BCOLS.indexOf(bcol) + 1) % BCOLS.length]; store.set('bcol', bcol); applySkin(); applyTheme(); render(); });
-  $('skinBtn').addEventListener('click', () => { skin = skin === 'braun' ? 'classic' : 'braun'; store.set('skin', skin); applySkin(); applyTheme(); render(); });
+  $('skinBtn').addEventListener('click', () => { skin = SKINS[(SKINS.indexOf(skin) + 1) % SKINS.length]; store.set('skin', skin); applySkin(); applyTheme(); render(); });
   $('themeBtn').addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; store.set('theme', theme); applyTheme(); });
   $('unit').addEventListener('click', () => { unit = unit === 'F' ? 'C' : 'F'; store.set('unit', unit); render(); });
   $('days').addEventListener('click', e => {
