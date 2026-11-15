@@ -804,6 +804,7 @@
   });
   function applyTheme(){
     document.body.dataset.theme = theme; setBase(); setSat();
+    try{ if (window.RadarlineApp) window.RadarlineApp.setTheme(theme); }catch(e){}   // Android app: widgets follow this setting
     const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = theme === 'light' ? '#E8EEF3' : '#0B1220';
   }
   $('themeBtn').addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; store.set('theme', theme); applyTheme(); });
