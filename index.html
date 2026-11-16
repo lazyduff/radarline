@@ -261,7 +261,7 @@
   #top.compact .dials svg.ar{width:92px;height:48px}
   .dials .at b{display:block;font-weight:400;color:#F0CF7A}
   #colBtn{display:none}
-  body[data-skin=braun] #colBtn{display:inline-block}
+  body[data-skin=braun] #colBtn, body[data-skin=classic] #colBtn{display:inline-block}
 </style>
 </head>
 <body>
@@ -276,7 +276,6 @@
     <div id="savedList"></div>
     <div class="tools">
       <button id="hereBtn">Use my location</button>
-      <button id="themeBtn">Light / dark</button>
       <button id="skinBtn">Skin: Classic</button>
       <button id="colBtn">Color: Stone</button>
     </div>
@@ -1058,11 +1057,15 @@
     document.body.dataset.skin = skin;
     $('skinBtn').textContent = 'Skin: ' + SKIN_NAME[skin];
     document.body.dataset.bcol = bcol;
-    $('colBtn').textContent = 'Color: ' + bcol[0].toUpperCase() + bcol.slice(1);
+    $('colBtn').textContent = 'Color: ' + (skin === 'classic' ? (theme === 'light' ? 'Light' : 'Dark') : bcol[0].toUpperCase() + bcol.slice(1));   // one button: Dark / Light in Classic, the colorways in Braun
+    try{ if (window.RadarlineApp) window.RadarlineApp.setSkin(skin, bcol); }catch(e){}   // Android app: widgets take the same look
   }
-  $('colBtn').addEventListener('click', () => { bcol = BCOLS[(BCOLS.indexOf(bcol) + 1) % BCOLS.length]; store.set('bcol', bcol); applySkin(); applyTheme(); render(); });
+  $('colBtn').addEventListener('click', () => {
+    if (skin === 'classic'){ theme = theme === 'light' ? 'dark' : 'light'; store.set('theme', theme); }
+    else { bcol = BCOLS[(BCOLS.indexOf(bcol) + 1) % BCOLS.length]; store.set('bcol', bcol); }
+    applySkin(); applyTheme(); render();
+  });
   $('skinBtn').addEventListener('click', () => { skin = SKINS[(SKINS.indexOf(skin) + 1) % SKINS.length]; store.set('skin', skin); applySkin(); applyTheme(); render(); });
-  $('themeBtn').addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; store.set('theme', theme); applyTheme(); });
   $('unit').addEventListener('click', () => { unit = unit === 'F' ? 'C' : 'F'; store.set('unit', unit); render(); });
   $('days').addEventListener('click', e => {
     const b = e.target.closest('.day'); if (!b) return;
