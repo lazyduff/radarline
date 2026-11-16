@@ -95,6 +95,23 @@
   .kv{font-size:11px;color:var(--dim)}
   .kv b{display:block;color:var(--text);font-weight:500;font-size:14px;margin-top:1px}
   .tide svg{width:100%;height:74px;display:block}
+  .tide svg.fit{height:auto}
+  .hr s{display:none;text-decoration:none}
+  .wd{grid-column:1/-1;display:flex;gap:14px;align-items:center}
+  .wd svg{width:76px;height:76px;flex:none}
+  .wd .kv + .kv{margin-top:6px}
+  /* Details sheet, per skin */
+  body[data-skin=braun] .kv{border-top:1px solid var(--b-edge);padding-top:5px;text-transform:lowercase}
+  body[data-skin=braun] .wd .kv{border-top:0;padding-top:0}
+  body[data-skin=bauhaus] .kv{border-top:2px solid #111;padding-top:4px;text-transform:lowercase}
+  body[data-skin=bauhaus] .wd .kv{border-top:0;padding-top:0}
+  body[data-skin=bauhaus] .hr s{display:block;margin:0 9px;background:#1D4E89}
+  body[data-skin=bauhaus] .hr u{color:#1D4E89}
+  body[data-skin=woodblock] .hd{display:table;background:#C8402F;color:#EFE7D6;padding:1px 7px;margin-top:12px}
+  body[data-skin=deco] .hd::before{content:'\25C6  ';color:#F0CF7A}
+  body[data-skin=deco] .kv{letter-spacing:.06em}
+  body[data-skin=deco] .hr s{display:block;margin-left:4px;margin-right:4px;background:#C9A24B;clip-path:polygon(0 6px,22% 6px,22% 3px,38% 3px,38% 0,62% 0,62% 3px,78% 3px,78% 6px,100% 6px,100% 100%,0 100%)}
+  body[data-skin=deco] .hr:nth-child(even) s{background:#8C7333}
   .tl{display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0}
   .tl span{color:var(--dim)}
   p.txt{font-size:12.5px;line-height:1.45;color:var(--text);margin-bottom:6px}
@@ -416,7 +433,20 @@
       c === 2 ? ['Partly cloudy', n ? ICON.partN : ICON.partD] : c === 3 ? ['Overcast', ICON.cloud] : c <= 48 ? ['Fog', ICON.fog] :
       c <= 57 ? ['Drizzle', ICON.drizzle] : c <= 67 ? ['Rain', ICON.rain] : c <= 77 ? ['Snow', ICON.snow] :
       c <= 82 ? ['Showers', n ? ICON.rain : ICON.showD] : c <= 86 ? ['Snow showers', ICON.snow] : ['Thunderstorm', ICON.storm];
-    const r = m(code); return {text:r[0], icon:r[1]};
+    const r = m(code); return {text:r[0], icon: skin === 'bauhaus' ? shapeIcon(r[0], n) : r[1]};
+  }
+  // Bauhaus: sky as plain shapes. Yellow circle sun, ring moon, black square cloud, blue triangle rain.
+  function shapeIcon(t, n){
+    const sv = b => '<svg class="wi" viewBox="0 0 24 24" aria-hidden="true">' + b + '</svg>', tri = (f, st) => '<path d="M12 21L2 4h20z" fill="' + f + '"' + (st ? ' stroke="#111" stroke-width="2.5"' : '') + '/>';
+    const orb = (x, r) => n ? '<circle cx="' + x + '" cy="' + x + '" r="' + (r - 1.5) + '" fill="none" stroke="#111" stroke-width="2.5"/>' : '<circle cx="' + x + '" cy="' + x + '" r="' + r + '" fill="#F2B705"/>';
+    if (/lear/.test(t)) return sv(orb(12, 9));
+    if (t === 'Partly cloudy') return sv(orb(9, 7) + '<rect x="10" y="10" width="12" height="12" fill="#111"/>');
+    if (t === 'Overcast') return sv('<rect x="3" y="3" width="18" height="18" fill="#111"/>');
+    if (t === 'Fog') return sv('<path d="M3 6h18M3 12h18M3 18h18" stroke="#111" stroke-width="3"/>');
+    if (/Snow/.test(t)) return sv(tri('none', 1));
+    if (t === 'Thunderstorm') return sv(tri('#D62828'));
+    if (t === 'Drizzle') return sv('<path d="M12 18L6 7h12z" fill="#1D4E89"/>');
+    return sv(tri('#1D4E89'));
   }
   async function jget(url, headers, ms){
     const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms || 15000);
@@ -786,12 +816,16 @@
   function renderHours(){
     const h = D.om && D.om.hourly;
     if (!h){ $('hours').innerHTML = ''; return; }
-    const s = hourStart(); let out = '';
-    for (let i = s; i < Math.min(s + 48, h.time.length); i++){
+    const s = hourStart(), e = Math.min(s + 48, h.time.length); let out = '';
+    const tt = h.temperature_2m.slice(s, e), tlo = Math.min(...tt), thi = Math.max(...tt);
+    const bar = i => { if (skin !== 'deco' && skin !== 'bauhaus') return '';   // Deco: skyline, taller = warmer. Bauhaus: blue block, taller = likelier rain.
+      const hh = Math.round(skin === 'deco' ? 12 + 30 * (h.temperature_2m[i] - tlo) / (thi - tlo || 1) : 26 * (h.precipitation_probability[i] || 0) / 100), top = (skin === 'deco' ? 42 : 26) - hh;
+      return '<s style="height:' + hh + 'px;margin-top:' + (top + 3) + 'px"></s>'; };
+    for (let i = s; i < e; i++){
       const dt = new Date(h.time[i]), pp = h.precipitation_probability[i], mid = dt.getHours() === 0;
       out += '<div class="hr' + (mid ? ' d0' : '') + '" data-day="' + h.time[i].slice(0, 10) + '">' + (mid ? dt.toLocaleDateString([], {weekday:'short'}) : i === s ? 'Now' : hourLbl(dt)) +
         '<i>' + wmo(h.weather_code[i], i === s ? isDayNow() : h.is_day[i]).icon + '</i><b>' + T(h.temperature_2m[i]) + '°</b><u>' + (pp >= 15 ? pp + '%' : '') + '</u>' +
-        compass(h.wind_direction_10m[i]) + ' ' + Math.round(h.wind_speed_10m[i]) + '</div>';
+        compass(h.wind_direction_10m[i]) + ' ' + Math.round(h.wind_speed_10m[i]) + bar(i) + '</div>';
     }
     $('hours').innerHTML = out;
   }
@@ -917,10 +951,32 @@
       const lo = Math.min(...pts.map(p => p[1])), hi = Math.max(...pts.map(p => p[1]));
       const X = t => (t - t0) / (t1 - t0) * W, Y = v => H - 8 - (v - lo) / (hi - lo || 1) * (H - 16);
       const path = pts.map((p, i) => (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1)).join('');
-      const nv = tideAt(td.ev, now);
-      svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><path d="' + path + 'L' + W + ' ' + H + 'L0 ' + H + 'Z" fill="var(--ice)" opacity=".14"/><path d="' + path +
-        '" fill="none" stroke="var(--ice)" stroke-width="1.5" vector-effect="non-scaling-stroke"/><line x1="' + X(now) + '" x2="' + X(now) + '" y1="0" y2="' + H +
-        '" stroke="var(--amber)" stroke-width="1" vector-effect="non-scaling-stroke"/>' + (nv != null ? '<circle cx="' + X(now) + '" cy="' + Y(nv) + '" r="2.5" fill="var(--amber)"/>' : '') + '</svg>';
+      const nv = tideAt(td.ev, now), n1 = v => v.toFixed(1);
+      if (skin === 'bauhaus'){            // twelve circles, one every two hours, each filled to the water level
+        let g = '';
+        for (let k = 0; k < 12; k++){ const t = now + k * 7200000, v = tideAt(td.ev, t); if (v == null) continue;
+          const f = Math.max(.04, Math.min(.96, (v - lo) / (hi - lo || 1))), cx = 13 + k * 26, dy = 10 - 20 * f, dx = Math.sqrt(100 - dy * dy);
+          g += '<path d="M' + n1(cx - dx) + ' ' + n1(14 + dy) + 'A10 10 0 ' + (f > .5 ? 1 : 0) + ' 0 ' + n1(cx + dx) + ' ' + n1(14 + dy) + 'Z" fill="#1D4E89"/><circle cx="' + cx + '" cy="14" r="10" fill="none" stroke="' + (k ? '#111' : '#D62828') + '" stroke-width="' + (k ? 1.5 : 2.5) + '"/>' +
+            (k % 2 ? '' : '<text x="' + cx + '" y="36" text-anchor="middle" font-size="8" fill="#111">' + (k ? hourLbl(new Date(t)) : 'now') + '</text>'); }
+        svg = '<svg class="fit" viewBox="0 0 312 40">' + g + '</svg>';
+      } else if (skin === 'deco'){         // stepped gold bars, one an hour, the lit one is now
+        let g = ''; const n = 27, bw = W / n;
+        for (let k = 0; k < n; k++){ const t = t0 + (k + .5) * 3600000, v = tideAt(td.ev, t); if (v == null) continue;
+          const y = Y(v), on = now >= t0 + k * 3600000 && now < t0 + (k + 1) * 3600000, c = on ? '#F0CF7A' : k % 2 ? '#8C7333' : '#C9A24B';
+          g += '<rect x="' + n1(k * bw + 1) + '" y="' + n1(y + 4) + '" width="' + n1(bw - 2) + '" height="' + n1(H - y - 4) + '" fill="' + c + '"/><rect x="' + n1(k * bw + 3) + '" y="' + n1(y) + '" width="' + n1(bw - 6) + '" height="5" fill="' + c + '"/>'; }
+        svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' + g + '<line x1="0" x2="' + W + '" y1="' + (H - .5) + '" y2="' + (H - .5) + '" stroke="#C9A24B" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>';
+      } else if (skin === 'woodblock'){    // layered water, a post at now, a red seal on each turn
+        const wave = (dy, amp) => pts.map((p, i) => (i ? 'L' : 'M') + n1(X(p[0])) + ' ' + n1(Y(p[1]) + dy + amp * Math.sin(X(p[0]) / 3.2))).join('') + 'L' + W + ' ' + H + 'L0 ' + H + 'Z';
+        const seals = td.ev.filter(e => e.t > t0 && e.t < t1).map(e => '<rect x="' + n1(X(e.t) - 3) + '" y="' + n1(Y(e.v) - (e.hi ? 9 : -3)) + '" width="6" height="6" fill="#C8402F"/>').join('');
+        svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><path d="' + wave(-5, 1.2) + '" fill="#9DB4C8"/><path d="' + wave(0, 1.6) + '" fill="#4F7498"/><path d="' + wave(9, 1.2) + '" fill="#1F3A5F"/>' + seals +
+          '<rect x="' + n1(X(now) - 1.5) + '" y="2" width="3" height="' + (H - 2) + '" fill="#6B4A2B"/><path d="M' + n1(X(now) - 4) + ' 6h8M' + n1(X(now) - 4) + ' 12h8" stroke="#6B4A2B" stroke-width="1.5"/></svg>';
+      } else {
+        let ticks = '';
+        if (skin === 'braun') for (let k = 0; k <= 27; k++) ticks += '<line x1="' + n1(k * W / 27) + '" x2="' + n1(k * W / 27) + '" y1="' + (k % 3 ? H - 4 : H - 8) + '" y2="' + H + '" style="stroke:var(--b-dim)" stroke-width="1" vector-effect="non-scaling-stroke"/>';
+        svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><path d="' + path + 'L' + W + ' ' + H + 'L0 ' + H + 'Z" fill="var(--ice)" opacity=".14"/><path d="' + path +
+          '" fill="none" stroke="' + (skin === 'braun' ? 'var(--b-text)' : 'var(--ice)') + '" stroke-width="1.5" vector-effect="non-scaling-stroke"/>' + ticks + '<line x1="' + X(now) + '" x2="' + X(now) + '" y1="0" y2="' + H +
+          '" stroke="var(--amber)" stroke-width="1" vector-effect="non-scaling-stroke"/>' + (nv != null ? '<circle cx="' + X(now) + '" cy="' + Y(nv) + '" r="2.5" fill="var(--amber)"/>' : '') + '</svg>';
+      }
     }
     const next = td.ev.filter(e => e.t > now).slice(0, 4), nv = tideAt(td.ev, now);
     const rising = next[0] && next[0].hi;
@@ -928,6 +984,27 @@
       '<div class="tl"><b>' + (rising ? 'Rising ▲' : 'Falling ▼') + '</b><span>' + (nv != null ? 'about ' + nv.toFixed(1) + ' ft now' : '') + '</span></div>' + svg +
       next.map(e => { const d = new Date(e.t), tom = d.getDate() !== new Date().getDate();
         return '<div class="tl">' + (e.hi ? 'High' : 'Low') + ' ' + e.v.toFixed(1) + ' ft<span>' + (tom ? d.toLocaleDateString([], {weekday:'short'}) + ' ' : '') + clock(d) + '</span></div>'; }).join('') + '</div>';
+  }
+  // Wind dial for the skins. The pointer sits on the side the wind comes from.
+  function windDial(dir){
+    const a = dir * Math.PI / 180, px = r => (48 + Math.sin(a) * r).toFixed(1), py = r => (48 - Math.cos(a) * r).toFixed(1), P = (ang, r) => (48 + Math.sin(ang) * r).toFixed(1) + ' ' + (48 - Math.cos(ang) * r).toFixed(1);
+    let b = '';
+    if (skin === 'braun'){
+      for (let i = 0; i < 16; i++){ const t = i / 16 * 2 * Math.PI; b += '<line x1="' + P(t, i % 4 ? 40 : 35).replace(' ', '" y1="') + '" x2="' + P(t, 44).replace(' ', '" y2="') + '"/>'; }
+      b = '<circle cx="48" cy="48" r="46.5" style="fill:var(--b-face);stroke:var(--b-edge)"/><g style="stroke:var(--b-text)" stroke-width="1.2">' + b + '</g><text x="48" y="30" text-anchor="middle" font-size="11" style="fill:var(--b-dim)">n</text>' +
+        '<line x1="48" y1="48" x2="' + px(31) + '" y2="' + py(31) + '" style="stroke:var(--b-text)" stroke-width="3.4" stroke-linecap="round"/><circle cx="48" cy="48" r="4.5" style="fill:var(--b-acc)"/>';
+    } else if (skin === 'bauhaus'){
+      b = '<circle cx="48" cy="48" r="43" fill="none" stroke="#111" stroke-width="4"/><rect x="45" y="0" width="6" height="12" fill="#111"/><polygon points="' + P(a - .3, 38) + ' ' + P(a + .3, 38) + ' ' + P(a, 10) + '" fill="#D62828"/>';
+    } else if (skin === 'woodblock'){
+      b = '<circle cx="48" cy="48" r="44" fill="none" stroke="#1F3A5F" stroke-width="1.5"/><path d="M48 4v9M48 83v9M4 48h9M83 48h9" stroke="#1F3A5F" stroke-width="1.5"/>' +
+        '<path d="M' + P(a + Math.PI / 2, 4) + 'Q' + P(a + .5, 22) + ' ' + P(a, 38) + 'Q' + P(a - .25, 20) + ' ' + P(a - Math.PI / 2, 4) + 'Z" fill="#C8402F"/><circle cx="48" cy="48" r="5" fill="#1F3A5F"/>';
+    } else {
+      const k = Math.round(dir / 22.5) % 16;
+      for (let i = 0; i < 16; i++){ const t0 = (i - .42) / 16 * 2 * Math.PI, t1 = (i + .42) / 16 * 2 * Math.PI, R = i % 2 ? 36 : 44;
+        b += '<polygon points="48 48 ' + P(t0, R) + ' ' + P(t1, R) + '" fill="' + (i === k ? '#F0CF7A' : i % 2 ? '#5A4A22' : '#6E5B2A') + '"/>'; }
+      b += '<rect x="42" y="42" width="12" height="12" fill="#14161A" stroke="#C9A24B" transform="rotate(45 48 48)"/>';
+    }
+    return '<svg viewBox="0 0 96 96" role="img" aria-label="Wind from ' + compass(dir) + '">' + b + '</svg>';
   }
   function renderDetails(){
     const om = D.om;
@@ -956,7 +1033,10 @@
       kv.push(['Air quality (regional model)', Math.round(q) + ' ' + cat]);
     }
     if (an && an.err) kv.push(['AirNow status', '<span style="font-size:12px;font-weight:400">' + esc(an.err) + '</span>']);
-    $('details').innerHTML = kv.map(x => '<div class="kv">' + x[0] + '<b>' + x[1] + '</b></div>').join('');
+    const cell = x => '<div class="kv">' + x[0] + '<b>' + x[1] + '</b></div>';
+    let head = '';
+    if (skin !== 'classic'){ const wk = kv.splice(2, 2); wk[0][1] = 'from ' + wk[0][1]; head = '<div class="wd">' + windDial(c.wind_direction_10m) + '<div>' + wk.map(cell).join('') + '</div></div>'; }
+    $('details').innerHTML = head + kv.map(cell).join('');
   }
   function renderText(){
     $('nwsWrap').innerHTML = D.nws && D.nws.length ? '<div class="hd">NWS forecaster text</div>' + D.nws.map(p => '<p class="txt"><b>' + esc(p.name) + ':</b> ' + esc(p.text) + '</p>').join('') : '';
