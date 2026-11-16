@@ -111,14 +111,14 @@
   /* Details sheet, per skin */
   body[data-skin=braun] .kv{border-top:1px solid var(--b-edge);padding-top:5px;text-transform:lowercase}
   body[data-skin=braun] .wd .kv{border-top:0;padding-top:0}
-  body[data-skin=bauhaus] .kv{border-top:2px solid #111;padding-top:4px;text-transform:lowercase}
-  body[data-skin=bauhaus] .wd .kv{border-top:0;padding-top:0}
+  body[data-skin=bauhaus] .kv{text-transform:lowercase}
+  body[data-skin=bauhaus] #body .hd{border-bottom:2px solid #111;padding-bottom:3px;margin-bottom:6px}
   body[data-skin=bauhaus] .hr s{display:block;margin:0 9px;background:#1D4E89}
   body[data-skin=bauhaus] .hr u{color:#1D4E89}
   body[data-skin=woodblock] .hd{display:table;background:#C8402F;color:#EFE7D6;padding:1px 7px;margin-top:12px}
   body[data-skin=deco] .hd::before{content:'\25C6  ';color:#F0CF7A}
   body[data-skin=deco] .kv{letter-spacing:.06em}
-  body[data-skin=deco] .hr s{display:block;margin-left:4px;margin-right:4px;background:#C9A24B;clip-path:polygon(0 6px,22% 6px,22% 3px,38% 3px,38% 0,62% 0,62% 3px,78% 3px,78% 6px,100% 6px,100% 100%,0 100%)}
+  body[data-skin=deco] .hr s{display:block;margin-left:12px;margin-right:12px;background:#C9A24B;clip-path:polygon(0 8px,20% 8px,20% 4px,36% 4px,36% 0,64% 0,64% 4px,80% 4px,80% 8px,100% 8px,100% 100%,0 100%)}
   body[data-skin=deco] .hr:nth-child(even) s{background:#8C7333}
   .tl{display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0}
   .tl span{color:var(--dim)}
@@ -453,7 +453,6 @@
     if (t === 'Fog') return sv('<path d="M3 6h18M3 12h18M3 18h18" stroke="#111" stroke-width="3"/>');
     if (/Snow/.test(t)) return sv(tri('none', 1));
     if (t === 'Thunderstorm') return sv(tri('#D62828'));
-    if (t === 'Drizzle') return sv('<path d="M12 18L6 7h12z" fill="#1D4E89"/>');
     return sv(tri('#1D4E89'));
   }
   async function jget(url, headers, ms){
@@ -827,7 +826,7 @@
     const s = hourStart(), e = Math.min(s + 48, h.time.length); let out = '';
     const tt = h.temperature_2m.slice(s, e), tlo = Math.min(...tt), thi = Math.max(...tt);
     const bar = i => { if (skin !== 'deco' && skin !== 'bauhaus') return '';   // Deco: skyline, taller = warmer. Bauhaus: blue block, taller = likelier rain.
-      const hh = Math.round(skin === 'deco' ? 12 + 30 * (h.temperature_2m[i] - tlo) / (thi - tlo || 1) : 26 * (h.precipitation_probability[i] || 0) / 100), top = (skin === 'deco' ? 42 : 26) - hh;
+      const hh = Math.round(skin === 'deco' ? 10 + 36 * (h.temperature_2m[i] - tlo) / (thi - tlo || 1) : 26 * (h.precipitation_probability[i] || 0) / 100), top = (skin === 'deco' ? 46 : 26) - hh;
       return '<s style="height:' + hh + 'px;margin-top:' + (top + 3) + 'px"></s>'; };
     for (let i = s; i < e; i++){
       const dt = new Date(h.time[i]), pp = h.precipitation_probability[i], mid = dt.getHours() === 0;
@@ -999,7 +998,7 @@
         svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' + g + '<line x1="0" x2="' + W + '" y1="' + (H - .5) + '" y2="' + (H - .5) + '" stroke="#C9A24B" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>';
       } else if (skin === 'woodblock'){    // layered water, a post at now, a red seal on each turn
         const wave = (dy, amp) => pts.map((p, i) => (i ? 'L' : 'M') + n1(X(p[0])) + ' ' + n1(Y(p[1]) + dy + amp * Math.sin(X(p[0]) / 3.2))).join('') + 'L' + W + ' ' + H + 'L0 ' + H + 'Z';
-        const seals = td.ev.filter(e => e.t > t0 && e.t < t1).map(e => '<rect x="' + n1(X(e.t) - 3) + '" y="' + n1(Y(e.v) - (e.hi ? 9 : -3)) + '" width="6" height="6" fill="#C8402F"/>').join('');
+        const seals = td.ev.filter(e => e.t > t0 && e.t < t1).map(e => '<rect x="' + n1(X(e.t) - 3) + '" y="' + n1(Math.min(H - 7, Y(e.v) - (e.hi ? 9 : -3))) + '" width="6" height="6" fill="#C8402F"/>').join('');
         svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><path d="' + wave(-5, 1.2) + '" fill="#9DB4C8"/><path d="' + wave(0, 1.6) + '" fill="#4F7498"/><path d="' + wave(9, 1.2) + '" fill="#1F3A5F"/>' + seals +
           '<rect x="' + n1(X(now) - 1.5) + '" y="2" width="3" height="' + (H - 2) + '" fill="#6B4A2B"/><path d="M' + n1(X(now) - 4) + ' 6h8M' + n1(X(now) - 4) + ' 12h8" stroke="#6B4A2B" stroke-width="1.5"/></svg>';
       } else {
