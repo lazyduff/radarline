@@ -100,6 +100,14 @@
   .wd{grid-column:1/-1;display:flex;gap:14px;align-items:center}
   .wd svg{width:76px;height:76px;flex:none}
   .wd .kv + .kv{margin-top:6px}
+  .wd svg.mo{width:56px;height:56px;margin:0 10px}
+  body{--mlit:var(--text);--mdark:rgba(128,128,128,.3);--mline:var(--dim)}
+  body[data-theme=light]{--mlit:#fff;--mdark:#56697D}
+  body[data-skin=braun]{--mlit:var(--b-face);--mdark:var(--b-text);--mline:var(--b-text)}
+  body[data-skin=braun][data-bcol=graphite]{--mlit:var(--b-text);--mdark:var(--b-hole)}
+  body[data-skin=bauhaus]{--mlit:#F2B705;--mdark:#111;--mline:#111}
+  body[data-skin=woodblock]{--mlit:#EFE7D6;--mdark:#1F3A5F;--mline:#1F3A5F}
+  body[data-skin=deco]{--mlit:#F0CF7A;--mdark:#3A321C;--mline:#C9A24B}
   /* Details sheet, per skin */
   body[data-skin=braun] .kv{border-top:1px solid var(--b-edge);padding-top:5px;text-transform:lowercase}
   body[data-skin=braun] .wd .kv{border-top:0;padding-top:0}
@@ -901,18 +909,42 @@
       '<div class="wt">' + (ti ? '<span class="seal">' + (ti.nx.hi ? 'High' : 'Low') + ' tide ' + ti.at + '</span>' + (ti.nx.hi ? 'rising' : 'falling') + (ti.v != null ? ', ' + ti.v.toFixed(1) + ' ft now' : '') + ' · ' : '') +
       'rain ' + (rp ? 'up to ' + rp + '%' : 'none') + ' in 12 h</div>';
   }
+  // Moon. Phase comes from the length of the lunar month, height in the sky from a short position formula. Good to a few minutes.
+  function moonAlt(t, lat, lon){
+    const r = Math.PI / 180, d = t / 86400000 - 10957.5, e = r * 23.4397;
+    const L = r * (218.316 + 13.176396 * d), M = r * (134.963 + 13.064993 * d), F = r * (93.272 + 13.229350 * d), l = L + r * 6.289 * Math.sin(M), b = r * 5.128 * Math.sin(F);
+    const ra = Math.atan2(Math.sin(l) * Math.cos(e) - Math.tan(b) * Math.sin(e), Math.cos(l)), dec = Math.asin(Math.sin(b) * Math.cos(e) + Math.cos(b) * Math.sin(e) * Math.sin(l));
+    const H = r * (280.16 + 360.9856235 * d) + r * lon - ra;
+    return Math.asin(Math.sin(r * lat) * Math.sin(dec) + Math.cos(r * lat) * Math.cos(dec) * Math.cos(H)) / r;
+  }
+  function moonInfo(){
+    const now = Date.now(), la = active.lat, lo = active.lon, st = 300000, above = t => moonAlt(t, la, lo) > .133;
+    let p = ((now / 86400000 + 2440587.5 - 2451550.1) / 29.530588853) % 1; if (p < 0) p += 1;
+    const k = (1 - Math.cos(2 * Math.PI * p)) / 2, up = above(now);
+    const name = p < .03 || p > .97 ? 'New moon' : p < .22 ? 'Waxing crescent' : p < .28 ? 'First quarter' : p < .47 ? 'Waxing gibbous' : p < .53 ? 'Full moon' : p < .72 ? 'Waning gibbous' : p < .78 ? 'Last quarter' : 'Waning crescent';
+    let rise = null, set = null, last = null, was = up;
+    for (let t = now + st; t < now + 26 * 3600000 && !(rise && set); t += st){ const a = above(t); if (a && !was && !rise) rise = t; if (!a && was && !set) set = t; was = a; }
+    if (up) for (let t = now - st; t > now - 16 * 3600000; t -= st) if (!above(t)){ last = t + st; break; }
+    return {p, k, wax: p < .5, name, up, rise, set, f: up && last && set ? (now - last) / (set - last) : -1};
+  }
+  // Moon disc at cx, cy: dark disc, lit part laid over it. Lit limb is on the right while waxing (as seen from the north).
+  function moonSvg(cx, cy, r, k, wax, lit, dark, line){
+    const rx = (r * Math.abs(1 - 2 * k)).toFixed(2), lim = '<path d="M' + cx + ' ' + (cy - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + cx + ' ' + (cy + r) + 'A' + rx + ' ' + r + ' 0 0 ' + (k < .5 ? 0 : 1) + ' ' + cx + ' ' + (cy - r) + 'Z"' +
+      (wax ? '' : ' transform="matrix(-1 0 0 1 ' + 2 * cx + ' 0)"') + ' style="fill:' + lit + '"/>';
+    return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" style="fill:' + dark + '"/>' + (k > .02 ? lim : '') + '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" style="stroke:' + line + '" stroke-width="1"/>';
+  }
   function dialsDeco(){
     const d = D.om.daily, now = Date.now(), ti = tideInfo(), rp = rainPeak();
-    const up = new Date(d.sunrise[0]).getTime(), dn = new Date(d.sunset[0]).getTime(), day = now > up && now < dn, f = day ? (now - up) / (dn - up) : 0;
+    const up = new Date(d.sunrise[0]).getTime(), dn = new Date(d.sunset[0]).getTime(), day = now > up && now < dn, mi = day ? null : moonInfo(), mup = !!mi && mi.f >= 0, f = day ? (now - up) / (dn - up) : mup ? mi.f : 0;
     let w = '';
-    for (let i = 0; i < 10; i++){ const a = Math.PI * (i + .12) / 10, b = Math.PI * (i + .88) / 10, R = i % 2 ? 56 : 66, lit = day && (i + 1) / 10 > f;
-      w += '<polygon fill="' + (lit ? '#F0CF7A' : i % 2 ? '#5A4A22' : '#6E5B2A') + '" points="70,66 ' + (70 - Math.cos(a) * R).toFixed(1) + ',' + (66 - Math.sin(a) * R).toFixed(1) + ' ' + (70 - Math.cos(b) * R).toFixed(1) + ',' + (66 - Math.sin(b) * R).toFixed(1) + '"/>'; }
+    for (let i = 0; i < 10; i++){ const a = Math.PI * (i + .12) / 10, b = Math.PI * (i + .88) / 10, R = i % 2 ? 56 : 66, lit = (day || mup) && (i + 1) / 10 > f;
+      w += '<polygon fill="' + (lit ? (day ? '#F0CF7A' : '#A89F86') : i % 2 ? '#5A4A22' : '#6E5B2A') + '" points="70,66 ' + (70 - Math.cos(a) * R).toFixed(1) + ',' + (66 - Math.sin(a) * R).toFixed(1) + ' ' + (70 - Math.cos(b) * R).toFixed(1) + ',' + (66 - Math.sin(b) * R).toFixed(1) + '"/>'; }
     const sa = Math.PI * f, sx = (70 - Math.cos(sa) * 46).toFixed(1), sy = (66 - Math.sin(sa) * 46).toFixed(1);
     const mins = Math.round((dn - now) / 60000), nextUp = now >= dn && d.sunrise[1] ? new Date(d.sunrise[1]) : new Date(d.sunrise[0]);
-    return '<svg class="ar" viewBox="0 0 140 72" role="img" aria-label="Sun on its arch from sunrise to sunset">' + w + '<path d="M24,66 A46,46 0 0 1 116,66" fill="none" stroke="#14161A" stroke-width="2.5"/>' +
-      (day ? '<circle cx="' + sx + '" cy="' + sy + '" r="6" fill="#F0CF7A" stroke="#14161A" stroke-width="2"/>' : '<circle cx="70" cy="30" r="6" fill="none" stroke="#EDE3C8" stroke-width="1.5"/>') +
-      '<path d="M0,66 H140 M0,70 H140" stroke="#C9A24B"/></svg><div class="at"><b>' + (day ? Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min of sun' : 'Sun up ' + clock(nextUp)) + '</b>' +
-      (ti ? 'Tide ' + (ti.nx.hi ? 'high ' : 'low ') + ti.at + ' · ' + ti.nx.v.toFixed(1) + ' ft<br>' : '') + 'Rain ' + (rp ? 'up to ' + rp + '%' : 'none') + ', 12 h</div>';
+    return '<svg class="ar" viewBox="0 0 140 72" role="img" aria-label="Sun by day, moon by night, on the arch from rise to set">' + w + '<path d="M24,66 A46,46 0 0 1 116,66" fill="none" stroke="#14161A" stroke-width="2.5"/>' +
+      (day ? '<circle cx="' + sx + '" cy="' + sy + '" r="6" fill="#F0CF7A" stroke="#14161A" stroke-width="2"/>' : mup ? moonSvg(+sx, +sy, 9, mi.k, mi.wax, '#EDE3C8', '#14161A', '#EDE3C8') : '') +
+      '<path d="M0,66 H140 M0,70 H140" stroke="#C9A24B"/></svg><div class="at"><b>' + (day ? Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min of sun' : mup ? 'Moon sets ' + clock(new Date(mi.set)) : mi.rise ? 'Moon rises ' + clock(new Date(mi.rise)) : 'No moon tonight') + '</b>' +
+      (ti ? 'Tide ' + (ti.nx.hi ? 'high ' : 'low ') + ti.at + ' · ' + ti.nx.v.toFixed(1) + ' ft<br>' : '') + (day ? '' : 'Sun up ' + clock(nextUp) + ' · ') + 'Rain ' + (rp ? 'up to ' + rp + '%' : 'none') + (day ? ', 12 h' : '') + '</div>';
   }
   // Braun skin: tide clock (hand at 12 = high water, 6 = low) and a dot grille of rain chance for the next 12 hours.
   function renderDials(){
@@ -1036,7 +1068,11 @@
     const cell = x => '<div class="kv">' + x[0] + '<b>' + x[1] + '</b></div>';
     let head = '';
     if (skin !== 'classic'){ const wk = kv.splice(2, 2); wk[0][1] = 'from ' + wk[0][1]; head = '<div class="wd">' + windDial(c.wind_direction_10m) + '<div>' + wk.map(cell).join('') + '</div></div>'; }
-    $('details').innerHTML = head + kv.map(cell).join('');
+    const m = moonInfo(), ev = [m.rise && ['Rises', m.rise], m.set && ['Sets', m.set]].filter(Boolean).sort((a, b) => a[1] - b[1]);
+    const when = t => { const dt = new Date(t); return (dt.getDate() !== new Date().getDate() ? dt.toLocaleDateString([], {weekday:'short'}) + ' ' : '') + clock(dt); };
+    const moon = '<div class="wd"><svg class="mo" viewBox="0 0 48 48" role="img" aria-label="' + m.name + '">' + moonSvg(24, 24, 21, m.k, m.wax, 'var(--mlit)', 'var(--mdark)', 'var(--mline)') + '</svg><div>' +
+      cell(['Moon, ' + (m.up ? 'up now' : 'down now'), m.name + ' · ' + Math.round(m.k * 100) + '% lit']) + cell([ev.map(x => x[0]).join(' / ') || 'Rise and set', ev.map(x => when(x[1])).join(' / ') || 'none in the next day']) + '</div></div>';
+    $('details').innerHTML = head + kv.map(cell).join('') + moon;
   }
   function renderText(){
     $('nwsWrap').innerHTML = D.nws && D.nws.length ? '<div class="hd">NWS forecaster text</div>' + D.nws.map(p => '<p class="txt"><b>' + esc(p.name) + ':</b> ' + esc(p.text) + '</p>').join('') : '';
