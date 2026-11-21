@@ -112,15 +112,17 @@
   /* Picked to stand apart from each look's radar color, fires (orange) and map */
   body{--quake:#F05BD8}
   body[data-theme=light]{--quake:#A3229A}
-  body[data-skin=braun]{--quake:#2E6E4E}
-  body[data-skin=braun][data-bcol=graphite]{--quake:#7FD07A}
+  body[data-skin=braun]{--quake:#111111}
+  body[data-skin=braun][data-bcol=graphite]{--quake:#F1EFE9}
   body[data-skin=braun][data-bcol=white]{--quake:#1F5FA8}
-  body[data-skin=braun][data-bcol=walnut]{--quake:#2F4A22}
+  body[data-skin=braun][data-bcol=walnut]{--quake:#2A2620}
   body[data-skin=bauhaus]{--quake:#D62828}
   body[data-skin=woodblock]{--quake:#1F3A5F}
-  body[data-skin=deco]{--quake:#4FBF9F}
-  @keyframes qpulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.15}}
-  .qpulse{animation:qpulse 1.4s ease-in-out infinite}
+  body[data-skin=deco]{--quake:#D3D8E0}
+  @keyframes qpulse{0%,100%{opacity:1}50%{opacity:.25}}
+  .quake-ico{background:none;border:0}
+  .quake-ico svg{display:block;overflow:visible}
+  .quake-ico.qpulse svg{animation:qpulse 1.4s ease-in-out infinite}
   /* Details sheet, per skin */
   body[data-skin=braun] .kv{border-top:1px solid var(--b-edge);padding-top:5px;text-transform:lowercase}
   body[data-skin=braun] .wd .kv{border-top:0;padding-top:0}
@@ -722,20 +724,29 @@
     const m = Math.round((Date.now() - t) / 60000);
     return m < 60 ? Math.max(1, m) + ' min ago' : m < 2880 ? Math.round(m / 60) + ' h ago' : new Date(t).toLocaleDateString([], {month:'short', day:'numeric'});
   }
-  // Ripples: one ring per magnitude step (M4 one, M5 two, M6 three), a solid dot at the epicenter.
-  // Fades with age. Quakes from the last hour pulse.
+  // Wavy ripples: four rings at M4.0, one more per magnitude step (M5 five, M6 six, up to eight), dot at the epicenter.
+  // Drawn as a fixed-size picture so rings keep their shape at every zoom. Fades with age; quakes from the last hour pulse.
+  function wavyRing(c, R, lobes, amp){
+    let d = '';
+    for (let i = 0; i <= 96; i++){ const a = i / 96 * 2 * Math.PI, r = R + amp * Math.sin(lobes * a);
+      d += (i ? 'L' : 'M') + (c + r * Math.cos(a)).toFixed(1) + ' ' + (c + r * Math.sin(a)).toFixed(1); }
+    return d + 'Z';
+  }
   function drawQuakes(){
     quakeLayer.clearLayers();
     const q = D.quakes; if (!q || !q.length) return;
     const col = getComputedStyle(document.body).getPropertyValue('--quake').trim() || '#F05BD8';
     q.slice().sort((x, y) => x.mag - y.mag).forEach(x => {
-      const age = (Date.now() - x.t) / 86400000, op = Math.max(.4, 1 - age / 30 * .6), fresh = age < 1 / 24, n = Math.min(4, 1 + Math.floor(x.mag - 4));
-      const pop = '<b>M' + x.mag.toFixed(1) + '</b> · ' + qago(x.t) + '<br>' + esc(x.place) + '<br>' + Math.round(x.depth * 0.621) + ' mi deep · ' + x.mi.toFixed(0) + ' mi ' + x.dir +
-        (x.felt ? ' · felt by ' + x.felt.toLocaleString() : '') + (x.url ? '<br><a href="' + x.url + '" target="_blank" rel="noopener">USGS page</a>' : '');
-      for (let k = n; k >= 1; k--)
-        L.circleMarker([x.lat, x.lon], {pane:'quake', radius:4 + k * 6, color:col, weight:k === 1 ? 2.5 : 2, opacity:op * (1 - (k - 1) * .2), fill:k === n,
-          fillColor:col, fillOpacity:.001, className:fresh ? 'qpulse' : '', bubblingMouseEvents:false}).bindPopup(pop).addTo(quakeLayer);
-      L.circleMarker([x.lat, x.lon], {pane:'quake', radius:3.5, stroke:false, fillColor:col, fillOpacity:op, bubblingMouseEvents:false}).bindPopup(pop).addTo(quakeLayer);
+      const age = (Date.now() - x.t) / 86400000, op = Math.max(.4, 1 - age / 30 * .6), n = Math.min(8, 4 + Math.floor(x.mag - 4)), gap = 6, R0 = 7;
+      const size = 2 * (R0 + n * gap + 3), c = size / 2;
+      let rings = '';
+      for (let k = 0; k < n; k++) rings += '<path d="' + wavyRing(c, R0 + k * gap, 7, 1.6) + '" fill="none" stroke="' + col + '" stroke-width="' + (k ? 1.4 : 2) +
+        '" stroke-opacity="' + (op * (1 - k / n * .75)).toFixed(2) + '" stroke-linejoin="round"/>';
+      const svg = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' + rings + '<circle cx="' + c + '" cy="' + c + '" r="3.5" fill="' + col + '" fill-opacity="' + op.toFixed(2) + '"/></svg>';
+      L.marker([x.lat, x.lon], {pane:'quake', icon:L.divIcon({className:'quake-ico' + (age < 1 / 24 ? ' qpulse' : ''), html:svg, iconSize:[size, size], iconAnchor:[c, c], popupAnchor:[0, -c + 6]}),
+        keyboard:false, title:'M' + x.mag.toFixed(1), bubblingMouseEvents:false})
+        .bindPopup('<b>M' + x.mag.toFixed(1) + '</b> · ' + qago(x.t) + '<br>' + esc(x.place) + '<br>' + Math.round(x.depth * 0.621) + ' mi deep · ' + x.mi.toFixed(0) + ' mi ' + x.dir +
+          (x.felt ? ' · felt by ' + x.felt.toLocaleString() : '') + (x.url ? '<br><a href="' + x.url + '" target="_blank" rel="noopener">USGS page</a>' : '')).addTo(quakeLayer);
     });
   }
   async function loadSea(l){
