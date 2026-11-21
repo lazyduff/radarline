@@ -489,6 +489,36 @@
   map.createPane('sat').style.zIndex = 210;
   map.getPane('sat').style.pointerEvents = 'none';
   map.createPane('radar').style.zIndex = 300;
+  // Radar tiles with the weakest echoes removed (under about 14 dBZ). Those are mostly ground clutter, birds and
+  // clear-air returns, and the skins' one-color radar made them look like rain. Colors follow the IEM N0Q scale.
+  // If a tile can't be read (no CORS), it is shown as is.
+  const weakEcho = new Map();
+  function isWeak(r, g, b){
+    const k = (r << 16) | (g << 8) | b; let w = weakEcho.get(k);
+    if (w === undefined){ const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      w = (r < 250 && r > 60 && mx - mn < 80) || (b >= 155 && b > r + 50 && g > 80 && g < 165 && r < 160); weakEcho.set(k, w); }
+    return w;
+  }
+  const RadarTiles = L.TileLayer.extend({
+    createTile(coords, done){
+      const sz = this.getTileSize(), c = document.createElement('canvas'), url = this.getTileUrl(coords);
+      c.width = sz.x; c.height = sz.y;
+      const draw = (img, clean) => {
+        const x = c.getContext('2d'); x.drawImage(img, 0, 0, sz.x, sz.y);
+        if (clean) try {
+          const im = x.getImageData(0, 0, sz.x, sz.y), d = im.data;
+          for (let i = 0; i < d.length; i += 4) if (d[i + 3] && isWeak(d[i], d[i + 1], d[i + 2])) d[i + 3] = 0;
+          x.putImageData(im, 0, 0);
+        } catch (e) {}
+        done(null, c);
+      };
+      const img = new Image(); img.crossOrigin = 'anonymous';
+      img.onload = () => draw(img, true);
+      img.onerror = () => { const raw = new Image(); raw.onload = () => draw(raw, false); raw.onerror = () => done(new Error('tile'), c); raw.src = url; };
+      img.src = url;
+      return c;
+    }
+  });
   map.getPane('radar').style.pointerEvents = 'none';
   map.createPane('fire').style.zIndex = 460;
   map.createPane('quake').style.zIndex = 455;
@@ -518,7 +548,7 @@
     for (let i = 10; i >= 0; i--){ const t = end - i * 2 * five; frames.push({t, url:'https://mesonet.agron.iastate.edu/c/tile.py/1.0.0/ridge::USCOMP-N0Q-' + stampUTC(t) + '/{z}/{x}/{y}.png'}); }
     frames.push({t:null, url:'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::USCOMP-N0Q-0/{z}/{x}/{y}.png?_=' + Math.floor(Date.now() / 300000)});
     layers.forEach(l => map.removeLayer(l));
-    layers = frames.map(f => L.tileLayer(f.url, {opacity:0, maxZoom:13, maxNativeZoom:10, pane:'radar'}).addTo(map));
+    layers = frames.map(f => new RadarTiles(f.url, {opacity:0, maxZoom:13, maxNativeZoom:10, pane:'radar'}).addTo(map));
     showFrame(frames.length - 1);
   }
   function showFrame(i){
